@@ -24,6 +24,8 @@ const OwnerPage = ({ onBack }: OwnerPageProps) => {
       vacancies: Number(form.vacancies) || 0,
       gender: "male",
       image: form.image || hostel1,
+      lat: 12.9716,
+      lng: 77.5946,
     };
     setHostels([newHostel, ...hostels]);
     setForm({ name: "", rent: "", vacancies: "", image: "" });
