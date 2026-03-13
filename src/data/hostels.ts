@@ -12,6 +12,8 @@ export interface Hostel {
   vacancies: number;
   gender: "male" | "female";
   image: string;
+  lat: number;
+  lng: number;
 }
 
 export const mockHostels: Hostel[] = [
