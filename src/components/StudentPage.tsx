@@ -13,6 +13,7 @@ const StudentPage = ({ onNavigate }: StudentPageProps) => {
   const [gender, setGender] = useState<"all" | "male" | "female">("all");
   const [sortBy, setSortBy] = useState<"price" | "rating" | "vacancies">("rating");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   const filtered = useMemo(() => {
     let list = [...mockHostels];
