@@ -119,21 +119,41 @@ const StudentPage = ({ onNavigate }: StudentPageProps) => {
           </div>
         </div>
 
-        {/* Grid */}
-        {filtered.length === 0 ?
-        <div className="py-20 text-center text-muted-foreground">
+        {/* View Toggle */}
+        <div className="mb-4 flex items-center gap-1 rounded-xl bg-secondary p-1 w-fit">
+          <button
+            onClick={() => setViewMode("grid")}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              viewMode === "grid" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}>
+            <LayoutGrid className="h-3.5 w-3.5" /> Grid
+          </button>
+          <button
+            onClick={() => setViewMode("map")}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+              viewMode === "map" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+            }`}>
+            <Map className="h-3.5 w-3.5" /> Map
+          </button>
+        </div>
+
+        {/* Content */}
+        {viewMode === "map" ? (
+          <HostelMap hostels={filtered} />
+        ) : filtered.length === 0 ? (
+          <div className="py-20 text-center text-muted-foreground">
             <p className="text-lg font-medium">No hostels found</p>
             <p className="mt-1 text-sm">Try adjusting your filters</p>
-          </div> :
-
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((h, i) =>
-          <div key={h.id} className="animate-fade-up" style={{ animationDelay: `${i * 0.08}s`, animationFillMode: "both" }}>
+          </div>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((h, i) => (
+              <div key={h.id} className="animate-fade-up" style={{ animationDelay: `${i * 0.08}s`, animationFillMode: "both" }}>
                 <HostelCard hostel={h} />
               </div>
-          )}
+            ))}
           </div>
-        }
+        )}
       </main>
     </div>);
 

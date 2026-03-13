@@ -26,6 +26,8 @@ export const mockHostels: Hostel[] = [
     vacancies: 5,
     gender: "male",
     image: hostel1,
+    lat: 12.9352,
+    lng: 77.6245,
   },
   {
     id: "2",
@@ -36,6 +38,8 @@ export const mockHostels: Hostel[] = [
     vacancies: 2,
     gender: "female",
     image: hostel2,
+    lat: 12.9116,
+    lng: 77.6389,
   },
   {
     id: "3",
@@ -46,6 +50,8 @@ export const mockHostels: Hostel[] = [
     vacancies: 8,
     gender: "male",
     image: hostel3,
+    lat: 12.9166,
+    lng: 77.6101,
   },
   {
     id: "4",
@@ -56,6 +62,8 @@ export const mockHostels: Hostel[] = [
     vacancies: 0,
     gender: "female",
     image: hostel4,
+    lat: 12.9784,
+    lng: 77.6408,
   },
   {
     id: "5",
@@ -66,6 +74,8 @@ export const mockHostels: Hostel[] = [
     vacancies: 12,
     gender: "male",
     image: hostel1,
+    lat: 12.9591,
+    lng: 77.6974,
   },
   {
     id: "6",
@@ -76,5 +86,7 @@ export const mockHostels: Hostel[] = [
     vacancies: 3,
     gender: "female",
     image: hostel3,
+    lat: 12.9698,
+    lng: 77.7500,
   },
 ];
