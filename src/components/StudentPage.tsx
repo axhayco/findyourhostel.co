@@ -1,7 +1,8 @@
 import { Hostel, mockHostels } from "@/data/hostels";
 import { useState, useMemo } from "react";
-import { Search, Menu, X, ChevronDown, User, HelpCircle, Phone, LogOut } from "lucide-react";
+import { Search, Menu, X, ChevronDown, User, HelpCircle, Phone, LogOut, LayoutGrid, Map } from "lucide-react";
 import HostelCard from "./HostelCard";
+import HostelMap from "./HostelMap";
 
 interface StudentPageProps {
   onNavigate: (page: string) => void;
