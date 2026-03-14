@@ -9,7 +9,7 @@ interface StudentPageProps {
   onSelectHostel?: (hostel: Hostel) => void;
 }
 
-const StudentPage = ({ onNavigate }: StudentPageProps) => {
+const StudentPage = ({ onNavigate, onSelectHostel }: StudentPageProps) => {
   const [search, setSearch] = useState("");
   const [gender, setGender] = useState<"all" | "male" | "female">("all");
   const [sortBy, setSortBy] = useState<"price" | "rating" | "vacancies">("rating");
