@@ -10,6 +10,7 @@ export interface Hostel {
   rent: number;
   rating: number;
   vacancies: number;
+  totalCapacity: number;
   gender: "male" | "female";
   image: string;
   photos: string[];
