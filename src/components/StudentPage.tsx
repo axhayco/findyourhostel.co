@@ -6,6 +6,7 @@ import HostelMap from "./HostelMap";
 
 interface StudentPageProps {
   onNavigate: (page: string) => void;
+  onSelectHostel?: (hostel: Hostel) => void;
 }
 
 const StudentPage = ({ onNavigate }: StudentPageProps) => {
