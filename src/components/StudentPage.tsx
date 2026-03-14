@@ -6,9 +6,10 @@ import HostelMap from "./HostelMap";
 
 interface StudentPageProps {
   onNavigate: (page: string) => void;
+  onSelectHostel?: (hostel: Hostel) => void;
 }
 
-const StudentPage = ({ onNavigate }: StudentPageProps) => {
+const StudentPage = ({ onNavigate, onSelectHostel }: StudentPageProps) => {
   const [search, setSearch] = useState("");
   const [gender, setGender] = useState<"all" | "male" | "female">("all");
   const [sortBy, setSortBy] = useState<"price" | "rating" | "vacancies">("rating");
@@ -148,7 +149,7 @@ const StudentPage = ({ onNavigate }: StudentPageProps) => {
         ) : (
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((h, i) => (
-              <div key={h.id} className="animate-fade-up" style={{ animationDelay: `${i * 0.08}s`, animationFillMode: "both" }}>
+              <div key={h.id} className="animate-fade-up cursor-pointer" style={{ animationDelay: `${i * 0.08}s`, animationFillMode: "both" }} onClick={() => onSelectHostel?.(h)}>
                 <HostelCard hostel={h} />
               </div>
             ))}

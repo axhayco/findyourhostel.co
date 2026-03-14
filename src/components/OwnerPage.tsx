@@ -15,6 +15,7 @@ const OwnerPage = ({ onBack }: OwnerPageProps) => {
 
   const handleAdd = () => {
     if (!form.name || !form.rent) return;
+    const img = form.image || hostel1;
     const newHostel: Hostel = {
       id: Date.now().toString(),
       name: form.name,
@@ -23,7 +24,11 @@ const OwnerPage = ({ onBack }: OwnerPageProps) => {
       rating: 4.0,
       vacancies: Number(form.vacancies) || 0,
       gender: "male",
-      image: form.image || hostel1,
+      image: img,
+      photos: [img],
+      amenities: ["Wi-Fi"],
+      description: "Newly listed hostel.",
+      contactPhone: "+91 00000 00000",
       lat: 12.9716,
       lng: 77.5946,
     };

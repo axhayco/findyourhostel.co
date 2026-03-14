@@ -12,6 +12,10 @@ export interface Hostel {
   vacancies: number;
   gender: "male" | "female";
   image: string;
+  photos: string[];
+  amenities: string[];
+  description: string;
+  contactPhone: string;
   lat: number;
   lng: number;
 }
@@ -26,6 +30,10 @@ export const mockHostels: Hostel[] = [
     vacancies: 5,
     gender: "male",
     image: hostel1,
+    photos: [hostel1, hostel2, hostel3],
+    amenities: ["Wi-Fi", "AC", "Laundry", "Power Backup", "CCTV", "Parking"],
+    description: "A well-maintained boys hostel in the heart of Koramangala with spacious rooms, 24/7 water supply, and excellent connectivity to major IT parks.",
+    contactPhone: "+91 98765 43210",
     lat: 12.9352,
     lng: 77.6245,
   },
@@ -38,6 +46,10 @@ export const mockHostels: Hostel[] = [
     vacancies: 2,
     gender: "female",
     image: hostel2,
+    photos: [hostel2, hostel4, hostel1],
+    amenities: ["Wi-Fi", "AC", "Meals Included", "Gym", "CCTV", "Housekeeping"],
+    description: "Premium women's PG with home-cooked meals, modern gym facilities, and a safe environment with 24/7 security and warden.",
+    contactPhone: "+91 98765 43211",
     lat: 12.9116,
     lng: 77.6389,
   },
@@ -50,6 +62,10 @@ export const mockHostels: Hostel[] = [
     vacancies: 8,
     gender: "male",
     image: hostel3,
+    photos: [hostel3, hostel1, hostel4],
+    amenities: ["Wi-Fi", "Hot Water", "Power Backup", "Study Room", "Parking"],
+    description: "Affordable and clean hostel near BTM Layout metro station. Ideal for students and working professionals looking for budget-friendly accommodation.",
+    contactPhone: "+91 98765 43212",
     lat: 12.9166,
     lng: 77.6101,
   },
@@ -62,6 +78,10 @@ export const mockHostels: Hostel[] = [
     vacancies: 0,
     gender: "female",
     image: hostel4,
+    photos: [hostel4, hostel2, hostel3],
+    amenities: ["Wi-Fi", "AC", "Meals Included", "Laundry", "Gym", "Terrace", "CCTV"],
+    description: "Luxury women's hostel in upscale Indiranagar with rooftop terrace, fully equipped kitchen, and proximity to cafes and shopping areas.",
+    contactPhone: "+91 98765 43213",
     lat: 12.9784,
     lng: 77.6408,
   },
@@ -74,6 +94,10 @@ export const mockHostels: Hostel[] = [
     vacancies: 12,
     gender: "male",
     image: hostel1,
+    photos: [hostel1, hostel3, hostel2],
+    amenities: ["Wi-Fi", "Power Backup", "Laundry", "Parking"],
+    description: "Budget-friendly boys hostel near Marathahalli bridge with easy access to Outer Ring Road tech parks. Basic amenities with clean rooms.",
+    contactPhone: "+91 98765 43214",
     lat: 12.9591,
     lng: 77.6974,
   },
@@ -86,6 +110,10 @@ export const mockHostels: Hostel[] = [
     vacancies: 3,
     gender: "female",
     image: hostel3,
+    photos: [hostel3, hostel4, hostel1],
+    amenities: ["Wi-Fi", "AC", "Meals Included", "Housekeeping", "CCTV", "Power Backup"],
+    description: "Peaceful women's hostel in Whitefield with excellent food, regular housekeeping, and a quiet study environment close to ITPL.",
+    contactPhone: "+91 98765 43215",
     lat: 12.9698,
     lng: 77.7500,
   },
