@@ -168,6 +168,25 @@ const OwnerPage = ({ onBack }: OwnerPageProps) => {
           ))}
         </div>
 
+        {/* Hardware Status Indicator */}
+        <div className={`rounded-2xl border p-4 flex items-center gap-4 ${hwOnline ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${hwOnline ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+            {hwOnline ? <Wifi className="h-5 w-5" /> : <WifiOff className="h-5 w-5" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Occupancy Monitoring System</span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${hwOnline ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${hwOnline ? "bg-success animate-pulse" : "bg-destructive"}`} />
+                {hwOnline ? "Online" : "Offline"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Last ping: {lastPing.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </p>
+          </div>
+        </div>
+
         {/* Hostel List */}
         <div className="space-y-3">
           {hostels.map((h) => {
