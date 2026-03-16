@@ -1,8 +1,8 @@
 import { Hostel, mockHostels, ALL_AMENITIES } from "@/data/hostels";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ArrowLeft, Plus, X, Pencil, Trash2, Users, BedDouble, IndianRupee,
-  Building2, Eye, ChevronDown, Check, MapPin, Phone, Star
+  Building2, Eye, ChevronDown, Check, MapPin, Phone, Star, Wifi, WifiOff
 } from "lucide-react";
 import hostel1 from "@/assets/hostel1.jpg";
 
