@@ -7,6 +7,8 @@ import {
 import hostel1 from "@/assets/hostel1.jpg";
 
 interface OwnerPageProps {
+  hostels: Hostel[];
+  onHostelsChange: (hostels: Hostel[]) => void;
   onBack: () => void;
 }
 

@@ -1,15 +1,16 @@
-import { Hostel, mockHostels } from "@/data/hostels";
+import { Hostel } from "@/data/hostels";
 import { useState, useMemo } from "react";
 import { Search, Menu, X, ChevronDown, User, HelpCircle, Phone, LogOut, LayoutGrid, Map } from "lucide-react";
 import HostelCard from "./HostelCard";
 import HostelMap from "./HostelMap";
 
 interface StudentPageProps {
+  hostels: Hostel[];
   onNavigate: (page: string) => void;
   onSelectHostel?: (hostel: Hostel) => void;
 }
 
-const StudentPage = ({ onNavigate, onSelectHostel }: StudentPageProps) => {
+const StudentPage = ({ hostels: allHostels, onNavigate, onSelectHostel }: StudentPageProps) => {
   const [search, setSearch] = useState("");
   const [gender, setGender] = useState<"all" | "male" | "female">("all");
   const [sortBy, setSortBy] = useState<"price" | "rating" | "vacancies">("rating");
