@@ -1,8 +1,8 @@
 import { Hostel, mockHostels, ALL_AMENITIES } from "@/data/hostels";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ArrowLeft, Plus, X, Pencil, Trash2, Users, BedDouble, IndianRupee,
-  Building2, Eye, ChevronDown, Check, MapPin, Phone, Star
+  Building2, Eye, ChevronDown, Check, MapPin, Phone, Star, Wifi, WifiOff
 } from "lucide-react";
 import hostel1 from "@/assets/hostel1.jpg";
 
@@ -44,6 +44,18 @@ const OwnerPage = ({ onBack }: OwnerPageProps) => {
   const [form, setForm] = useState<HostelForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
   const [viewHostel, setViewHostel] = useState<Hostel | null>(null);
+  const [hwOnline, setHwOnline] = useState(true);
+  const [lastPing, setLastPing] = useState(new Date());
+
+  // Simulate hardware ping every 30s with random online/offline
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const online = Math.random() > 0.15; // 85% chance online
+      setHwOnline(online);
+      setLastPing(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const stats = useMemo(() => {
     const totalBeds = hostels.reduce((s, h) => s + h.totalCapacity, 0);
@@ -154,6 +166,25 @@ const OwnerPage = ({ onBack }: OwnerPageProps) => {
               <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Hardware Status Indicator */}
+        <div className={`rounded-2xl border p-4 flex items-center gap-4 ${hwOnline ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
+          <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${hwOnline ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+            {hwOnline ? <Wifi className="h-5 w-5" /> : <WifiOff className="h-5 w-5" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">Occupancy Monitoring System</span>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${hwOnline ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${hwOnline ? "bg-success animate-pulse" : "bg-destructive"}`} />
+                {hwOnline ? "Online" : "Offline"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Last ping: {lastPing.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </p>
+          </div>
         </div>
 
         {/* Hostel List */}
