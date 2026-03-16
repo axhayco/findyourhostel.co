@@ -7,6 +7,8 @@ import {
 import hostel1 from "@/assets/hostel1.jpg";
 
 interface OwnerPageProps {
+  hostels: Hostel[];
+  onHostelsChange: (hostels: Hostel[]) => void;
   onBack: () => void;
 }
 
@@ -38,8 +40,11 @@ const emptyForm: HostelForm = {
   amenities: [],
 };
 
-const OwnerPage = ({ onBack }: OwnerPageProps) => {
-  const [hostels, setHostels] = useState<Hostel[]>(mockHostels);
+const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
+  const setHostels = (updated: Hostel[] | ((prev: Hostel[]) => Hostel[])) => {
+    const next = typeof updated === "function" ? updated(hostels) : updated;
+    onHostelsChange(next);
+  };
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<HostelForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
