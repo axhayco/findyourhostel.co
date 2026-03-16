@@ -44,6 +44,18 @@ const OwnerPage = ({ onBack }: OwnerPageProps) => {
   const [form, setForm] = useState<HostelForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
   const [viewHostel, setViewHostel] = useState<Hostel | null>(null);
+  const [hwOnline, setHwOnline] = useState(true);
+  const [lastPing, setLastPing] = useState(new Date());
+
+  // Simulate hardware ping every 30s with random online/offline
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const online = Math.random() > 0.15; // 85% chance online
+      setHwOnline(online);
+      setLastPing(new Date());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const stats = useMemo(() => {
     const totalBeds = hostels.reduce((s, h) => s + h.totalCapacity, 0);
