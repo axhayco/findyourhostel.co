@@ -40,8 +40,8 @@ const emptyForm: HostelForm = {
   amenities: [],
 };
 
-const OwnerPage = ({ onBack }: OwnerPageProps) => {
-  const [hostels, setHostels] = useState<Hostel[]>(mockHostels);
+const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
+  const [localHostels, setLocalHostels] = useState<Hostel[]>(hostels);
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<HostelForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);

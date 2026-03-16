@@ -18,7 +18,7 @@ const StudentPage = ({ hostels: allHostels, onNavigate, onSelectHostel }: Studen
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
   const filtered = useMemo(() => {
-    let list = [...mockHostels];
+    let list = [...allHostels];
     if (gender !== "all") list = list.filter((h) => h.gender === gender);
     if (search.trim()) {
       const q = search.toLowerCase();
