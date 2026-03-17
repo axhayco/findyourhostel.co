@@ -49,11 +49,8 @@ const StudentPage = ({ hostels: allHostels, onNavigate, onSelectHostel }: Studen
             </button>
             {menuOpen &&
             <div className="animate-slide-down absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-xl border border-border bg-card shadow-card-hover">
-                <button
-                onClick={() => {setMenuOpen(false);onNavigate("owner");}}
-                className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
-                
-                  <User className="h-4 w-4 text-muted-foreground" /> Owner Panel
+                <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
+                  <User className="h-4 w-4 text-muted-foreground" /> My Profile
                 </button>
                 <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
                   <HelpCircle className="h-4 w-4 text-muted-foreground" /> Help
