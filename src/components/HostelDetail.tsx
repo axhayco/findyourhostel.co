@@ -13,6 +13,7 @@ interface Review {
 interface HostelDetailProps {
   hostel: Hostel;
   onBack: () => void;
+  onOpenChat?: () => void;
 }
 
 const amenityIcons: Record<string, React.ReactNode> = {
