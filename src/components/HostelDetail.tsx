@@ -1,6 +1,6 @@
 import { Hostel } from "@/data/hostels";
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Star, MapPin, Phone, Wifi, Wind, Utensils, Dumbbell, ShieldCheck, Car, Zap, Droplets, BookOpen, Home, Sparkles, Sun, Send, User } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Phone, Wifi, Wind, Utensils, Dumbbell, ShieldCheck, Car, Zap, Droplets, BookOpen, Home, Sparkles, Sun, Send, User, MessageCircle } from "lucide-react";
 
 interface Review {
   id: string;
