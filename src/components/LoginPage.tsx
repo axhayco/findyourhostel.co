@@ -2,8 +2,11 @@ import logo from "@/assets/logo.png";
 import { useState } from "react";
 import { Mail, Phone, ArrowRight, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 
+type UserRole = "student" | "owner";
+
 interface LoginPageProps {
   onLogin: () => void;
+  role: UserRole;
 }
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
