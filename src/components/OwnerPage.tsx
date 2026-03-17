@@ -41,11 +41,14 @@ const emptyForm: HostelForm = {
   amenities: [],
 };
 
-const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
+const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps) => {
   const setHostels = (updated: Hostel[] | ((prev: Hostel[]) => Hostel[])) => {
     const next = typeof updated === "function" ? updated(hostels) : updated;
     onHostelsChange(next);
   };
+
+  // Filter hostels to only show ones owned by this owner
+  const myHostels = useMemo(() => hostels.filter((h) => h.ownerId === ownerId), [hostels, ownerId]);
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<HostelForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
