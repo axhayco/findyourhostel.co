@@ -10,6 +10,7 @@ interface OwnerPageProps {
   hostels: Hostel[];
   onHostelsChange: (hostels: Hostel[]) => void;
   onBack: () => void;
+  ownerId: string;
 }
 
 type ModalMode = "add" | "edit" | "occupancy" | null;
@@ -40,11 +41,14 @@ const emptyForm: HostelForm = {
   amenities: [],
 };
 
-const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
+const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps) => {
   const setHostels = (updated: Hostel[] | ((prev: Hostel[]) => Hostel[])) => {
     const next = typeof updated === "function" ? updated(hostels) : updated;
     onHostelsChange(next);
   };
+
+  // Filter hostels to only show ones owned by this owner
+  const myHostels = useMemo(() => hostels.filter((h) => h.ownerId === ownerId), [hostels, ownerId]);
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<HostelForm>(emptyForm);
   const [editId, setEditId] = useState<string | null>(null);
@@ -63,11 +67,11 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
   }, []);
 
   const stats = useMemo(() => {
-    const totalBeds = hostels.reduce((s, h) => s + h.totalCapacity, 0);
-    const occupied = hostels.reduce((s, h) => s + (h.totalCapacity - h.vacancies), 0);
-    const vacant = hostels.reduce((s, h) => s + h.vacancies, 0);
+    const totalBeds = myHostels.reduce((s, h) => s + h.totalCapacity, 0);
+    const occupied = myHostels.reduce((s, h) => s + (h.totalCapacity - h.vacancies), 0);
+    const vacant = myHostels.reduce((s, h) => s + h.vacancies, 0);
     return { totalBeds, occupied, vacant, occupancyRate: totalBeds ? Math.round((occupied / totalBeds) * 100) : 0 };
-  }, [hostels]);
+  }, [myHostels]);
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -102,6 +106,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
     const img = form.image || hostel1;
     const hostelData: Hostel = {
       id: editId || Date.now().toString(),
+      ownerId,
       name: form.name,
       location: form.location || "New Location",
       rent: Number(form.rent),
@@ -160,7 +165,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total Hostels", value: hostels.length, icon: <Building2 className="h-5 w-5" />, color: "text-primary" },
+            { label: "My Hostels", value: myHostels.length, icon: <Building2 className="h-5 w-5" />, color: "text-primary" },
             { label: "Total Beds", value: stats.totalBeds, icon: <BedDouble className="h-5 w-5" />, color: "text-accent-foreground" },
             { label: "Occupied", value: stats.occupied, icon: <Users className="h-5 w-5" />, color: "text-success" },
             { label: "Occupancy Rate", value: `${stats.occupancyRate}%`, icon: <Eye className="h-5 w-5" />, color: "text-warning" },
@@ -194,7 +199,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
 
         {/* Hostel List */}
         <div className="space-y-3">
-          {hostels.map((h) => {
+          {myHostels.map((h) => {
             const occupied = h.totalCapacity - h.vacancies;
             const occupancyPct = h.totalCapacity ? Math.round((occupied / h.totalCapacity) * 100) : 0;
             return (
@@ -263,7 +268,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack }: OwnerPageProps) => {
           })}
         </div>
 
-        {hostels.length === 0 && (
+        {myHostels.length === 0 && (
           <div className="py-20 text-center text-muted-foreground">
             <Building2 className="mx-auto h-12 w-12 mb-3 opacity-40" />
             <p className="text-lg font-medium">No hostels yet</p>

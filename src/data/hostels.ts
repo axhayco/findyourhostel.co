@@ -19,6 +19,7 @@ export interface Hostel {
   contactPhone: string;
   lat: number;
   lng: number;
+  ownerId?: string;
 }
 
 export const ALL_AMENITIES = [
