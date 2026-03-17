@@ -165,7 +165,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
         {/* Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Total Hostels", value: hostels.length, icon: <Building2 className="h-5 w-5" />, color: "text-primary" },
+            { label: "My Hostels", value: myHostels.length, icon: <Building2 className="h-5 w-5" />, color: "text-primary" },
             { label: "Total Beds", value: stats.totalBeds, icon: <BedDouble className="h-5 w-5" />, color: "text-accent-foreground" },
             { label: "Occupied", value: stats.occupied, icon: <Users className="h-5 w-5" />, color: "text-success" },
             { label: "Occupancy Rate", value: `${stats.occupancyRate}%`, icon: <Eye className="h-5 w-5" />, color: "text-warning" },
