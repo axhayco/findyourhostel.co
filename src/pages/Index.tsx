@@ -56,7 +56,13 @@ const Index = () => {
       );
     case "detail":
       return selectedHostel ? (
-        <HostelDetail hostel={selectedHostel} onBack={() => setPage("student")} />
+        <HostelDetail hostel={selectedHostel} onBack={() => setPage("student")} onOpenChat={() => setPage("chat")} />
+      ) : (
+        <StudentPage hostels={hostels} onNavigate={handleNavigate} onSelectHostel={handleSelectHostel} />
+      );
+    case "chat":
+      return selectedHostel ? (
+        <CommunityChat hostel={selectedHostel} onBack={() => setPage("detail")} />
       ) : (
         <StudentPage hostels={hostels} onNavigate={handleNavigate} onSelectHostel={handleSelectHostel} />
       );
