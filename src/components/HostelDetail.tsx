@@ -47,7 +47,7 @@ const StarRating = ({ rating, onRate, interactive = false }: { rating: number; o
   </div>
 );
 
-const HostelDetail = ({ hostel, onBack }: HostelDetailProps) => {
+const HostelDetail = ({ hostel, onBack, onOpenChat }: HostelDetailProps) => {
   const [activePhoto, setActivePhoto] = useState(0);
   const storageKey = `reviews-${hostel.id}`;
 
