@@ -58,8 +58,12 @@ const LoginPage = ({ onLogin, role }: LoginPageProps) => {
       <div className="w-full max-w-sm animate-fade-up" style={{ animationFillMode: "both" }}>
         <div className="mb-8 flex flex-col items-center">
           <img src={logo} alt="Hostel Finder" className="mb-4 h-20 w-20" />
-          <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to find your perfect hostel</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {role === "owner" ? "Owner Login" : "Student Login"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {role === "owner" ? "Manage your hostel listings" : "Sign in to find your perfect hostel"}
+          </p>
         </div>
 
         <div className="rounded-2xl bg-card p-6 shadow-card">
