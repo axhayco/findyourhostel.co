@@ -60,7 +60,7 @@ const StudentPage = ({ hostels: allHostels, onNavigate, onSelectHostel }: Studen
                 </button>
                 <div className="border-t border-border" />
                 <button
-                onClick={() => {setMenuOpen(false);onNavigate("login");}}
+                onClick={() => {setMenuOpen(false);onNavigate("role-select");}}
                 className="flex w-full items-center gap-3 px-4 py-3 text-sm text-destructive transition-colors hover:bg-secondary">
                 
                   <LogOut className="h-4 w-4" /> Logout
