@@ -67,11 +67,11 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
   }, []);
 
   const stats = useMemo(() => {
-    const totalBeds = hostels.reduce((s, h) => s + h.totalCapacity, 0);
-    const occupied = hostels.reduce((s, h) => s + (h.totalCapacity - h.vacancies), 0);
-    const vacant = hostels.reduce((s, h) => s + h.vacancies, 0);
+    const totalBeds = myHostels.reduce((s, h) => s + h.totalCapacity, 0);
+    const occupied = myHostels.reduce((s, h) => s + (h.totalCapacity - h.vacancies), 0);
+    const vacant = myHostels.reduce((s, h) => s + h.vacancies, 0);
     return { totalBeds, occupied, vacant, occupancyRate: totalBeds ? Math.round((occupied / totalBeds) * 100) : 0 };
-  }, [hostels]);
+  }, [myHostels]);
 
   const openAdd = () => {
     setForm(emptyForm);
