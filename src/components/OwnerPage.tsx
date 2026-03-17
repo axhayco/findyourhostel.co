@@ -199,7 +199,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
 
         {/* Hostel List */}
         <div className="space-y-3">
-          {hostels.map((h) => {
+          {myHostels.map((h) => {
             const occupied = h.totalCapacity - h.vacancies;
             const occupancyPct = h.totalCapacity ? Math.round((occupied / h.totalCapacity) * 100) : 0;
             return (
