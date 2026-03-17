@@ -1,6 +1,6 @@
 import { Hostel } from "@/data/hostels";
 import { useState, useEffect, useMemo } from "react";
-import { ArrowLeft, Star, MapPin, Phone, Wifi, Wind, Utensils, Dumbbell, ShieldCheck, Car, Zap, Droplets, BookOpen, Home, Sparkles, Sun, Send, User } from "lucide-react";
+import { ArrowLeft, Star, MapPin, Phone, Wifi, Wind, Utensils, Dumbbell, ShieldCheck, Car, Zap, Droplets, BookOpen, Home, Sparkles, Sun, Send, User, MessageCircle } from "lucide-react";
 
 interface Review {
   id: string;
@@ -13,6 +13,7 @@ interface Review {
 interface HostelDetailProps {
   hostel: Hostel;
   onBack: () => void;
+  onOpenChat?: () => void;
 }
 
 const amenityIcons: Record<string, React.ReactNode> = {
@@ -46,7 +47,7 @@ const StarRating = ({ rating, onRate, interactive = false }: { rating: number; o
   </div>
 );
 
-const HostelDetail = ({ hostel, onBack }: HostelDetailProps) => {
+const HostelDetail = ({ hostel, onBack, onOpenChat }: HostelDetailProps) => {
   const [activePhoto, setActivePhoto] = useState(0);
   const storageKey = `reviews-${hostel.id}`;
 
@@ -232,6 +233,17 @@ const HostelDetail = ({ hostel, onBack }: HostelDetailProps) => {
             </div>
           )}
         </div>
+
+        {/* Community Chat Button */}
+        {onOpenChat && (
+          <button
+            onClick={onOpenChat}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-secondary py-4 text-base font-bold text-foreground transition-all hover:bg-secondary/80 active:scale-[0.98] mb-3"
+          >
+            <MessageCircle className="h-5 w-5" />
+            Community Chat
+          </button>
+        )}
 
         {/* Contact Button */}
         <div className="pb-6">

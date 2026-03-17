@@ -5,9 +5,10 @@ import RoleSelectPage from "@/components/RoleSelectPage";
 import StudentPage from "@/components/StudentPage";
 import OwnerPage from "@/components/OwnerPage";
 import HostelDetail from "@/components/HostelDetail";
+import CommunityChat from "@/components/CommunityChat";
 import { Hostel, mockHostels } from "@/data/hostels";
 
-type Page = "splash" | "role-select" | "login-student" | "login-owner" | "student" | "owner" | "detail";
+type Page = "splash" | "role-select" | "login-student" | "login-owner" | "student" | "owner" | "detail" | "chat";
 
 const Index = () => {
   const [page, setPage] = useState<Page>("splash");
@@ -55,7 +56,13 @@ const Index = () => {
       );
     case "detail":
       return selectedHostel ? (
-        <HostelDetail hostel={selectedHostel} onBack={() => setPage("student")} />
+        <HostelDetail hostel={selectedHostel} onBack={() => setPage("student")} onOpenChat={() => setPage("chat")} />
+      ) : (
+        <StudentPage hostels={hostels} onNavigate={handleNavigate} onSelectHostel={handleSelectHostel} />
+      );
+    case "chat":
+      return selectedHostel ? (
+        <CommunityChat hostel={selectedHostel} onBack={() => setPage("detail")} />
       ) : (
         <StudentPage hostels={hostels} onNavigate={handleNavigate} onSelectHostel={handleSelectHostel} />
       );
