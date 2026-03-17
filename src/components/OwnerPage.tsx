@@ -268,7 +268,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
           })}
         </div>
 
-        {hostels.length === 0 && (
+        {myHostels.length === 0 && (
           <div className="py-20 text-center text-muted-foreground">
             <Building2 className="mx-auto h-12 w-12 mb-3 opacity-40" />
             <p className="text-lg font-medium">No hostels yet</p>
