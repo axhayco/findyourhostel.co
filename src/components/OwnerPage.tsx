@@ -106,6 +106,7 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
     const img = form.image || hostel1;
     const hostelData: Hostel = {
       id: editId || Date.now().toString(),
+      ownerId,
       name: form.name,
       location: form.location || "New Location",
       rent: Number(form.rent),
