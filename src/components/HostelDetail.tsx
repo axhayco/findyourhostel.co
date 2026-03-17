@@ -234,6 +234,17 @@ const HostelDetail = ({ hostel, onBack, onOpenChat }: HostelDetailProps) => {
           )}
         </div>
 
+        {/* Community Chat Button */}
+        {onOpenChat && (
+          <button
+            onClick={onOpenChat}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-secondary py-4 text-base font-bold text-foreground transition-all hover:bg-secondary/80 active:scale-[0.98] mb-3"
+          >
+            <MessageCircle className="h-5 w-5" />
+            Community Chat
+          </button>
+        )}
+
         {/* Contact Button */}
         <div className="pb-6">
           <a href={`tel:${hostel.contactPhone}`} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]">
