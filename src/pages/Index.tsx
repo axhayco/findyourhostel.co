@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import SplashScreen from "@/components/SplashScreen";
 import LoginPage from "@/components/LoginPage";
 import RoleSelectPage from "@/components/RoleSelectPage";
@@ -13,6 +13,7 @@ const Index = () => {
   const [page, setPage] = useState<Page>("splash");
   const [selectedHostel, setSelectedHostel] = useState<Hostel | null>(null);
   const [hostels, setHostels] = useState<Hostel[]>(mockHostels);
+  const [ownerId, setOwnerId] = useState<string | null>(null);
 
   const handleSplashFinish = useCallback(() => setPage("role-select"), []);
 
@@ -25,6 +26,13 @@ const Index = () => {
     setPage("detail");
   }, []);
 
+  const handleOwnerLogin = useCallback(() => {
+    // Generate a unique owner ID per session so each owner only sees their hostels
+    const id = `owner-${Date.now()}`;
+    setOwnerId(id);
+    setPage("owner");
+  }, []);
+
   switch (page) {
     case "splash":
       return <SplashScreen onFinish={handleSplashFinish} />;
@@ -33,11 +41,18 @@ const Index = () => {
     case "login-student":
       return <LoginPage role="student" onLogin={() => setPage("student")} />;
     case "login-owner":
-      return <LoginPage role="owner" onLogin={() => setPage("owner")} />;
+      return <LoginPage role="owner" onLogin={handleOwnerLogin} />;
     case "student":
       return <StudentPage hostels={hostels} onNavigate={handleNavigate} onSelectHostel={handleSelectHostel} />;
     case "owner":
-      return <OwnerPage hostels={hostels} onHostelsChange={setHostels} onBack={() => setPage("student")} />;
+      return (
+        <OwnerPage
+          hostels={hostels}
+          onHostelsChange={setHostels}
+          onBack={() => setPage("role-select")}
+          ownerId={ownerId!}
+        />
+      );
     case "detail":
       return selectedHostel ? (
         <HostelDetail hostel={selectedHostel} onBack={() => setPage("student")} />

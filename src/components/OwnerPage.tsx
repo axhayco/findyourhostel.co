@@ -10,6 +10,7 @@ interface OwnerPageProps {
   hostels: Hostel[];
   onHostelsChange: (hostels: Hostel[]) => void;
   onBack: () => void;
+  ownerId: string;
 }
 
 type ModalMode = "add" | "edit" | "occupancy" | null;
