@@ -23,7 +23,7 @@ const SplashScreen = ({ onFinish }: SplashScreenProps) => {
         className={`mt-4 text-2xl font-bold text-foreground ${show ? "animate-fade-up" : "opacity-0"}`}
         style={{ animationDelay: "0.4s", animationFillMode: "both" }}
       >
-        Hostel Finder
+        Hostel Mate
       </h1>
       <p
         className={`mt-1 text-sm text-muted-foreground ${show ? "animate-fade-up" : "opacity-0"}`}
