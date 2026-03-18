@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import SplashScreen from "@/components/SplashScreen";
 import LoginPage from "@/components/LoginPage";
 import RoleSelectPage from "@/components/RoleSelectPage";
@@ -6,9 +6,12 @@ import StudentPage from "@/components/StudentPage";
 import OwnerPage from "@/components/OwnerPage";
 import HostelDetail from "@/components/HostelDetail";
 import CommunityChat from "@/components/CommunityChat";
+import ProfilePage from "@/components/ProfilePage";
+import HelpPage from "@/components/HelpPage";
+import ContactPage from "@/components/ContactPage";
 import { Hostel, mockHostels } from "@/data/hostels";
 
-type Page = "splash" | "role-select" | "login-student" | "login-owner" | "student" | "owner" | "detail" | "chat";
+type Page = "splash" | "role-select" | "login-student" | "login-owner" | "student" | "owner" | "detail" | "chat" | "profile" | "help" | "contact";
 
 const Index = () => {
   const [page, setPage] = useState<Page>("splash");
@@ -28,7 +31,6 @@ const Index = () => {
   }, []);
 
   const handleOwnerLogin = useCallback(() => {
-    // Generate a unique owner ID per session so each owner only sees their hostels
     const id = `owner-${Date.now()}`;
     setOwnerId(id);
     setPage("owner");
@@ -66,6 +68,12 @@ const Index = () => {
       ) : (
         <StudentPage hostels={hostels} onNavigate={handleNavigate} onSelectHostel={handleSelectHostel} />
       );
+    case "profile":
+      return <ProfilePage onBack={() => setPage("student")} />;
+    case "help":
+      return <HelpPage onBack={() => setPage("student")} />;
+    case "contact":
+      return <ContactPage onBack={() => setPage("student")} />;
     default:
       return <SplashScreen onFinish={handleSplashFinish} />;
   }

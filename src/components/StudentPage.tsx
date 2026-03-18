@@ -49,13 +49,13 @@ const StudentPage = ({ hostels: allHostels, onNavigate, onSelectHostel }: Studen
             </button>
             {menuOpen &&
             <div className="animate-slide-down absolute right-0 top-full mt-2 w-48 overflow-hidden rounded-xl border border-border bg-card shadow-card-hover">
-                <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
+                <button onClick={() => { setMenuOpen(false); onNavigate("profile"); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
                   <User className="h-4 w-4 text-muted-foreground" /> My Profile
                 </button>
-                <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
+                <button onClick={() => { setMenuOpen(false); onNavigate("help"); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
                   <HelpCircle className="h-4 w-4 text-muted-foreground" /> Help
                 </button>
-                <button className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
+                <button onClick={() => { setMenuOpen(false); onNavigate("contact"); }} className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-secondary">
                   <Phone className="h-4 w-4 text-muted-foreground" /> Contact
                 </button>
                 <div className="border-t border-border" />

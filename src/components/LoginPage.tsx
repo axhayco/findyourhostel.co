@@ -129,7 +129,20 @@ const LoginPage = ({ onLogin, role }: LoginPageProps) => {
           )}
 
           <div className="mt-2 text-right">
-            <button className="text-xs text-primary hover:underline">Forgot password?</button>
+            <button
+              type="button"
+              onClick={() => {
+                const trimmed = input.trim();
+                if (!trimmed || (!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/).test(trimmed) && !(/^(\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}$/).test(trimmed))) {
+                  setErrors({ input: "Enter a valid email or phone to reset password" });
+                  return;
+                }
+                alert(`Password reset link sent to ${trimmed}. Please check your inbox.`);
+              }}
+              className="text-xs text-primary hover:underline"
+            >
+              Forgot password?
+            </button>
           </div>
 
           <button
