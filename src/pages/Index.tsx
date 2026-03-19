@@ -139,7 +139,7 @@ const Index = () => {
     case "profile":
       return (
         <>
-          <ProfilePage onBack={() => { setPage("student"); setActiveTab("explore"); }} />
+          <ProfilePage onBack={() => { setPage("student"); setActiveTab("explore"); }} onNavigate={handleNavigate} />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
         </>
       );
