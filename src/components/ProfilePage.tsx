@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { ArrowLeft, Camera, User, Mail, Phone, MapPin, Save, Check } from "lucide-react";
+import { ArrowLeft, Camera, User, Mail, Phone, MapPin, Save, Check, HelpCircle, PhoneCall, LogOut } from "lucide-react";
 
 interface ProfilePageProps {
   onBack: () => void;
+  onNavigate?: (page: string) => void;
 }
 
-const ProfilePage = ({ onBack }: ProfilePageProps) => {
+const ProfilePage = ({ onBack, onNavigate }: ProfilePageProps) => {
   const [saved, setSaved] = useState(false);
   const [profile, setProfile] = useState(() => {
     try {
@@ -39,17 +40,13 @@ const ProfilePage = ({ onBack }: ProfilePageProps) => {
     "w-full rounded-xl border border-input bg-background py-2.5 px-3 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-ring/20";
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 border-b border-border bg-card/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-          <button onClick={onBack} className="rounded-lg p-2 text-foreground transition-colors hover:bg-secondary">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <h1 className="text-lg font-bold text-foreground">My Profile</h1>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background pb-24">
+      <div className="mx-auto max-w-5xl px-4 pt-6">
+        <h1 className="text-2xl font-bold text-foreground mb-1">Profile</h1>
+        <p className="text-sm text-muted-foreground mb-6">Manage your account</p>
+      </div>
 
-      <main className="mx-auto max-w-lg px-4 py-6 space-y-5">
+      <main className="mx-auto max-w-lg px-4 space-y-5">
         {/* Avatar */}
         <div className="flex flex-col items-center">
           <div className="relative">
@@ -70,59 +67,29 @@ const ProfilePage = ({ onBack }: ProfilePageProps) => {
             <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <User className="h-3.5 w-3.5" /> Full Name
             </label>
-            <input
-              type="text"
-              value={profile.name}
-              onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-              className={inputClass}
-            />
+            <input type="text" value={profile.name} onChange={(e) => setProfile({ ...profile, name: e.target.value })} className={inputClass} />
           </div>
-
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <Mail className="h-3.5 w-3.5" /> Email
             </label>
-            <input
-              type="email"
-              value={profile.email}
-              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-              className={inputClass}
-            />
+            <input type="email" value={profile.email} onChange={(e) => setProfile({ ...profile, email: e.target.value })} className={inputClass} />
           </div>
-
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <Phone className="h-3.5 w-3.5" /> Phone
             </label>
-            <input
-              type="tel"
-              value={profile.phone}
-              onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-              className={inputClass}
-            />
+            <input type="tel" value={profile.phone} onChange={(e) => setProfile({ ...profile, phone: e.target.value })} className={inputClass} />
           </div>
-
           <div>
             <label className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" /> College / Institution
             </label>
-            <input
-              type="text"
-              value={profile.college}
-              onChange={(e) => setProfile({ ...profile, college: e.target.value })}
-              className={inputClass}
-            />
+            <input type="text" value={profile.college} onChange={(e) => setProfile({ ...profile, college: e.target.value })} className={inputClass} />
           </div>
-
           <div>
             <label className="mb-1 block text-xs font-semibold text-muted-foreground">Bio</label>
-            <textarea
-              rows={3}
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-              maxLength={150}
-              className={`${inputClass} resize-none`}
-            />
+            <textarea rows={3} value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} maxLength={150} className={`${inputClass} resize-none`} />
             <p className="mt-1 text-right text-[10px] text-muted-foreground">{profile.bio.length}/150</p>
           </div>
         </div>
@@ -131,16 +98,21 @@ const ProfilePage = ({ onBack }: ProfilePageProps) => {
           onClick={handleSave}
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
         >
-          {saved ? (
-            <>
-              <Check className="h-4 w-4" /> Saved!
-            </>
-          ) : (
-            <>
-              <Save className="h-4 w-4" /> Save Changes
-            </>
-          )}
+          {saved ? <><Check className="h-4 w-4" /> Saved!</> : <><Save className="h-4 w-4" /> Save Changes</>}
         </button>
+
+        {/* Quick Links */}
+        <div className="rounded-2xl bg-card shadow-card overflow-hidden">
+          <button onClick={() => onNavigate?.("help")} className="flex w-full items-center gap-3 px-5 py-4 text-sm text-foreground transition-colors hover:bg-secondary border-b border-border">
+            <HelpCircle className="h-4 w-4 text-muted-foreground" /> Help Center
+          </button>
+          <button onClick={() => onNavigate?.("contact")} className="flex w-full items-center gap-3 px-5 py-4 text-sm text-foreground transition-colors hover:bg-secondary border-b border-border">
+            <PhoneCall className="h-4 w-4 text-muted-foreground" /> Contact Us
+          </button>
+          <button onClick={() => onNavigate?.("role-select")} className="flex w-full items-center gap-3 px-5 py-4 text-sm text-destructive transition-colors hover:bg-secondary">
+            <LogOut className="h-4 w-4" /> Log out
+          </button>
+        </div>
       </main>
     </div>
   );
