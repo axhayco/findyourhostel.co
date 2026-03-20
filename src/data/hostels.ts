@@ -1,7 +1,13 @@
-import hostel1 from "@/assets/hostel1.jpg";
-import hostel2 from "@/assets/hostel2.jpg";
-import hostel3 from "@/assets/hostel3.jpg";
-import hostel4 from "@/assets/hostel4.jpg";
+import hostelA from "@/assets/hostel_a.jpg";
+import hostelB from "@/assets/hostel_b.jpg";
+import hostelC from "@/assets/hostel_c.jpg";
+import hostelD from "@/assets/hostel_d.jpg";
+import hostelE from "@/assets/hostel_e.jpg";
+import hostelF from "@/assets/hostel_f.jpg";
+import hostelG from "@/assets/hostel_g.jpg";
+import hostelH from "@/assets/hostel_h.jpg";
+import hostelI from "@/assets/hostel_i.jpg";
+import hostelJ from "@/assets/hostel_j.jpg";
 
 export interface Hostel {
   id: string;
