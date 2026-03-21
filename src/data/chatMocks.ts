@@ -1,4 +1,4 @@
-/*export interface ChatUser {
+export interface ChatUser {
   id: string;
   firstName: string;
   avatar: string;
@@ -86,4 +86,4 @@ export function isArrivingThisWeek(arrivalDate: string): boolean {
   endOfWeek.setDate(now.getDate() + 7);
   return arrival >= now && arrival <= endOfWeek;
 }
-*/
+
