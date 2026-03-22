@@ -1,172 +1,375 @@
-// ─── Real Supabase Auth Context ──────────────────────────────────────────────
-// Drop this file at:  src/context/AuthContext.tsx
+// ─── LoginPage.tsx — Real Auth (Email + Password + Google + Phone OTP) ────────
+// Drop this file at:  src/components/LoginPage.tsx
+// Replaces the existing mock LoginPage entirely.
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { Session, User } from "@supabase/supabase-js";
+import logo from "@/assets/logo.png";
+import { useState } from "react";
+import {
+  Mail, Phone, ArrowRight, Lock, Eye, EyeOff,
+  AlertCircle, Hash,
+} from "lucide-react";
+import { useAuth, type UserRole } from "@/context/AuthContext";
 
-export type UserRole = "student" | "owner";
+type AuthMode = "email" | "phone";
+type PhoneStep = "input" | "otp";
 
-interface AuthContextValue {
-  user: User | null;
-  session: Session | null;
-  role: UserRole | null;
-  loading: boolean;
-
-  // Email + password
-  signUpWithEmail: (email: string, password: string, role: UserRole) => Promise<{ error: string | null }>;
-  signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
-
-  // Google OAuth
-  signInWithGoogle: (role: UserRole) => Promise<{ error: string | null }>;
-
-  // Phone OTP
-  sendPhoneOtp: (phone: string) => Promise<{ error: string | null }>;
-  verifyPhoneOtp: (phone: string, token: string, role: UserRole) => Promise<{ error: string | null }>;
-
-  // Password reset
-  resetPassword: (email: string) => Promise<{ error: string | null }>;
-
-  signOut: () => Promise<void>;
+interface LoginPageProps {
+  onLogin: () => void;
+  role: UserRole;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phoneRegex = /^(\+91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}$/;
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser]       = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+const LoginPage = ({ onLogin, role }: LoginPageProps) => {
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, sendPhoneOtp, verifyPhoneOtp, resetPassword } = useAuth();
 
-  // Derive role from user_metadata (set at sign-up / OAuth callback)
-  const role: UserRole | null =
-    (user?.user_metadata?.role as UserRole) ?? null;
+  const [mode, setMode]           = useState<AuthMode>("email");
+  const [isSignUp, setIsSignUp]   = useState(false);
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>("input");
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+  // Email fields
+  const [email, setEmail]         = useState("");
+  const [password, setPassword]   = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+  // Phone fields
+  const [phone, setPhone]   = useState("");
+  const [otp, setOtp]       = useState("");
+
+  const [error, setError]   = useState<string | null>(null);
+  const [info, setInfo]     = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const clearMessages = () => { setError(null); setInfo(null); };
+
+  // ── Email / Password submit ────────────────────────────────────────────
+  const handleEmailSubmit = async () => {
+    clearMessages();
+    const trimEmail = email.trim();
+    if (!emailRegex.test(trimEmail)) { setError("Enter a valid email address"); return; }
+    if (password.length < 6)         { setError("Password must be at least 6 characters"); return; }
+
+    setLoading(true);
+    if (isSignUp) {
+      const { error } = await signUpWithEmail(trimEmail, password, role);
+      if (error) { setError(error); }
+      else {
+        setInfo("Account created! Check your email to confirm, then sign in.");
+        setIsSignUp(false);
       }
-    );
+    } else {
+      const { error } = await signInWithEmail(trimEmail, password);
+      if (error) { setError(error); }
+      else { onLogin(); }
+    }
+    setLoading(false);
+  };
 
-    return () => subscription.unsubscribe();
-  }, []);
+  // ── Google OAuth ───────────────────────────────────────────────────────
+  const handleGoogle = async () => {
+    clearMessages();
+    setLoading(true);
+    const { error } = await signInWithGoogle(role);
+    if (error) { setError(error); setLoading(false); }
+    // On success the page redirects — loading stays true
+  };
 
-  // ── Email sign-up ────────────────────────────────────────────────────────
-  const signUpWithEmail = useCallback(
-    async (email: string, password: string, role: UserRole) => {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { role },
-          emailRedirectTo: `${window.location.origin}/`,
-        },
-      });
-      return { error: error?.message ?? null };
-    },
-    []
-  );
+  // ── Phone OTP — send ───────────────────────────────────────────────────
+  const handleSendOtp = async () => {
+    clearMessages();
+    const trimPhone = phone.trim();
+    if (!phoneRegex.test(trimPhone)) { setError("Enter a valid Indian mobile number"); return; }
 
-  // ── Email sign-in ────────────────────────────────────────────────────────
-  const signInWithEmail = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error?.message ?? null };
-  }, []);
+    setLoading(true);
+    const { error } = await sendPhoneOtp(trimPhone);
+    if (error) { setError(error); }
+    else { setPhoneStep("otp"); setInfo(`OTP sent to ${trimPhone}`); }
+    setLoading(false);
+  };
 
-  // ── Google OAuth ─────────────────────────────────────────────────────────
-  const signInWithGoogle = useCallback(async (role: UserRole) => {
-    // Store role in localStorage so we can set it after OAuth redirect
-    localStorage.setItem("hostelmate-pending-role", role);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-        queryParams: { access_type: "offline", prompt: "consent" },
-      },
-    });
-    return { error: error?.message ?? null };
-  }, []);
+  // ── Phone OTP — verify ─────────────────────────────────────────────────
+  const handleVerifyOtp = async () => {
+    clearMessages();
+    if (otp.trim().length !== 6) { setError("Enter the 6-digit OTP"); return; }
 
-  // ── Phone OTP — send ─────────────────────────────────────────────────────
-  const sendPhoneOtp = useCallback(async (phone: string) => {
-    // Normalise to E.164: +91XXXXXXXXXX
-    const normalised = phone.replace(/[\s\-]/g, "").startsWith("+")
-      ? phone.replace(/[\s\-]/g, "")
-      : `+91${phone.replace(/[\s\-]/g, "").replace(/^0/, "")}`;
+    setLoading(true);
+    const { error } = await verifyPhoneOtp(phone.trim(), otp.trim(), role);
+    if (error) { setError(error); }
+    else { onLogin(); }
+    setLoading(false);
+  };
 
-    const { error } = await supabase.auth.signInWithOtp({ phone: normalised });
-    return { error: error?.message ?? null };
-  }, []);
+  // ── Forgot password ────────────────────────────────────────────────────
+  const handleForgotPassword = async () => {
+    clearMessages();
+    const trimEmail = email.trim();
+    if (!emailRegex.test(trimEmail)) {
+      setError("Enter your email address above first");
+      return;
+    }
+    setLoading(true);
+    const { error } = await resetPassword(trimEmail);
+    if (error) { setError(error); }
+    else { setInfo("Password reset email sent — check your inbox."); }
+    setLoading(false);
+  };
 
-  // ── Phone OTP — verify ───────────────────────────────────────────────────
-  const verifyPhoneOtp = useCallback(
-    async (phone: string, token: string, role: UserRole) => {
-      const normalised = phone.replace(/[\s\-]/g, "").startsWith("+")
-        ? phone.replace(/[\s\-]/g, "")
-        : `+91${phone.replace(/[\s\-]/g, "").replace(/^0/, "")}`;
-
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: normalised,
-        token,
-        type: "sms",
-      });
-
-      if (!error && data.user) {
-        // Persist role in user_metadata after first phone login
-        await supabase.auth.updateUser({ data: { role } });
-      }
-
-      return { error: error?.message ?? null };
-    },
-    []
-  );
-
-  // ── Password reset ───────────────────────────────────────────────────────
-  const resetPassword = useCallback(async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
-    });
-    return { error: error?.message ?? null };
-  }, []);
-
-  // ── Sign out ─────────────────────────────────────────────────────────────
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, []);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    if (mode === "email") handleEmailSubmit();
+    else if (phoneStep === "input") handleSendOtp();
+    else handleVerifyOtp();
+  };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        role,
-        loading,
-        signUpWithEmail,
-        signInWithEmail,
-        signInWithGoogle,
-        sendPhoneOtp,
-        verifyPhoneOtp,
-        resetPassword,
-        signOut,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6">
+      <div className="w-full max-w-sm animate-fade-up" style={{ animationFillMode: "both" }}>
+
+        {/* Logo + Title */}
+        <div className="mb-8 flex flex-col items-center">
+          <img src={logo} alt="HostelMate" className="mb-4 h-20 w-20" />
+          <h1 className="text-2xl font-bold text-foreground">
+            {role === "owner" ? "Owner Login" : "Student Login"}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {role === "owner" ? "Manage your hostel listings" : "Sign in to find your perfect hostel"}
+          </p>
+        </div>
+
+        {/* Mode tabs */}
+        <div className="mb-4 flex rounded-xl bg-secondary p-1">
+          {(["email", "phone"] as AuthMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => { setMode(m); clearMessages(); setPhoneStep("input"); }}
+              className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
+                mode === m
+                  ? "bg-card text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {m === "email" ? "📧 Email" : "📱 Phone OTP"}
+            </button>
+          ))}
+        </div>
+
+        <div className="rounded-2xl bg-card p-6 shadow-card space-y-4">
+
+          {/* ── Error / Info banners ── */}
+          {error && (
+            <div className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+          {info && (
+            <div className="rounded-xl bg-success/10 px-3.5 py-3 text-sm text-success">
+              {info}
+            </div>
+          )}
+
+          {/* ── EMAIL MODE ── */}
+          {mode === "email" && (
+            <>
+              {/* Email */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); clearMessages(); }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="you@example.com"
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-10 pr-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-ring/20"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); clearMessages(); }}
+                    onKeyDown={handleKeyDown}
+                    placeholder={isSignUp ? "Create a password (min 6 chars)" : "Enter password"}
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-10 pr-10 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-ring/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Forgot password */}
+              {!isSignUp && (
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+              )}
+
+              {/* Submit */}
+              <button
+                onClick={handleEmailSubmit}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+              >
+                {loading
+                  ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                  : <><span>{isSignUp ? "Create Account" : "Sign In"}</span><ArrowRight className="h-4 w-4" /></>
+                }
+              </button>
+
+              {/* Toggle sign up / sign in */}
+              <p className="text-center text-xs text-muted-foreground">
+                {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+                <button
+                  type="button"
+                  onClick={() => { setIsSignUp(!isSignUp); clearMessages(); }}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {isSignUp ? "Sign In" : "Sign Up"}
+                </button>
+              </p>
+            </>
+          )}
+
+          {/* ── PHONE MODE ── */}
+          {mode === "phone" && phoneStep === "input" && (
+            <>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Indian Mobile Number
+                </label>
+                <div className="relative">
+                  <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => { setPhone(e.target.value); clearMessages(); }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="9876543210"
+                    maxLength={13}
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-10 pr-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-ring/20"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  We'll send a 6-digit OTP via SMS
+                </p>
+              </div>
+
+              <button
+                onClick={handleSendOtp}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+              >
+                {loading
+                  ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                  : <><span>Send OTP</span><ArrowRight className="h-4 w-4" /></>
+                }
+              </button>
+            </>
+          )}
+
+          {mode === "phone" && phoneStep === "otp" && (
+            <>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Enter OTP
+                </label>
+                <p className="mb-3 text-xs text-muted-foreground">
+                  Sent to {phone} —{" "}
+                  <button
+                    type="button"
+                    onClick={() => { setPhoneStep("input"); setOtp(""); clearMessages(); }}
+                    className="text-primary hover:underline"
+                  >
+                    change
+                  </button>
+                </p>
+                <div className="relative">
+                  <Hash className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="number"
+                    value={otp}
+                    onChange={(e) => { setOtp(e.target.value.slice(0, 6)); clearMessages(); }}
+                    onKeyDown={handleKeyDown}
+                    placeholder="6-digit OTP"
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-10 pr-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-ring/20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleVerifyOtp}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+              >
+                {loading
+                  ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+                  : <><span>Verify & Sign In</span><ArrowRight className="h-4 w-4" /></>
+                }
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSendOtp}
+                disabled={loading}
+                className="w-full text-center text-xs text-primary hover:underline disabled:opacity-50"
+              >
+                Resend OTP
+              </button>
+            </>
+          )}
+
+          {/* ── Divider + Google (both modes) ── */}
+          {!(mode === "phone" && phoneStep === "otp") && (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs text-muted-foreground">or</span>
+                <div className="h-px flex-1 bg-border" />
+              </div>
+
+              <button
+                onClick={handleGoogle}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-input bg-background py-3 text-sm font-medium text-foreground transition-all hover:bg-secondary active:scale-[0.98] disabled:opacity-60"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                Continue with Google
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
-  return ctx;
-};
+export default LoginPage;
