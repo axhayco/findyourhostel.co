@@ -11,20 +11,20 @@ const ProfilePage = ({ onBack, onNavigate }: ProfilePageProps) => {
   const [profile, setProfile] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem("hostelmate-profile") || "null") || {
-        name: "Alex Johnson",
-        email: "alex@example.com",
-        phone: "+91 98765 43210",
+        name: "King Steve",
+        email: "kingsteve@example.com",
+        phone: "+91 98765 4xxxx",
         college: "BMS College of Engineering",
-        bio: "Final year CS student looking for a comfortable hostel near campus.",
+        bio: "Final year CSE student looking for a comfortable hostel near campus.",
         avatar: "",
       };
     } catch {
       return {
-        name: "Alex Johnson",
-        email: "alex@example.com",
-        phone: "+91 98765 43210",
+        name: "King Steve ",
+        email: "kingsteve@example.com",
+        phone: "+91 98765 4xxxx",
         college: "BMS College of Engineering",
-        bio: "Final year CS student looking for a comfortable hostel near campus.",
+        bio: "Final year CSE student looking for a comfortable hostel near campus.",
         avatar: "",
       };
     }

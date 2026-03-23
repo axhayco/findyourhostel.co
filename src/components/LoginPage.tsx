@@ -54,10 +54,7 @@ const LoginPage = ({ onLogin, role }: LoginPageProps) => {
     if (isSignUp) {
       const { error } = await signUpWithEmail(trimEmail, password, role);
       if (error) { setError(error); }
-      else {
-        setInfo("Account created! Check your email to confirm, then sign in.");
-        setIsSignUp(false);
-      }
+      else { onLogin(); }
     } else {
       const { error } = await signInWithEmail(trimEmail, password);
       if (error) { setError(error); }
