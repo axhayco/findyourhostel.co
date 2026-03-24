@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { ArrowLeft, Hash, Pin, Send, Smile, Flag, Ban, Shield, ChevronDown, ChevronUp, X, MessageCircle } from "lucide-react";
 import { Hostel } from "@/data/hostels";
+import { useAuth } from "@/context/AuthContext";
 import {
-  ChatMessage, ChatUser, CHAT_CHANNELS, CURRENT_USER,
+  ChatMessage, ChatUser, CHAT_CHANNELS,
   mockChatUsers, mockMessages, mockPinnedMessages, QUICK_EMOJIS,
   formatStayBadge, isArrivingThisWeek,
 } from "@/data/chatMocks";
@@ -13,8 +14,8 @@ interface CommunityChatProps {
 }
 
 /* ─── Arriving This Week Strip ─── */
-const ArrivingStrip = () => {
-  const arriving = mockChatUsers.filter((u) => isArrivingThisWeek(u.arrivalDate));
+const ArrivingStrip = ({ gender }: { gender: "male" | "female" }) => {
+  const arriving = mockChatUsers.filter((u) => u.gender === gender && isArrivingThisWeek(u.arrivalDate));
   if (arriving.length === 0) return null;
   return (
     <div className="border-b border-border bg-card px-4 py-3">
@@ -61,13 +62,14 @@ const PinnedSection = ({ messages }: { messages: ChatMessage[] }) => {
 
 /* ─── Single Message Bubble ─── */
 const MessageBubble = ({
-  msg, user, isMine, onReact, onReport, onBlock, isAdmin,
+  msg, user, isMine, onReact, onReport, onBlock, isAdmin, currentUserId,
 }: {
   msg: ChatMessage; user?: ChatUser; isMine: boolean;
   onReact: (msgId: string, emoji: string) => void;
   onReport: (msgId: string) => void;
   onBlock: (userId: string) => void;
   isAdmin: boolean;
+  currentUserId: string;
 }) => {
   const [showEmojis, setShowEmojis] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -97,7 +99,7 @@ const MessageBubble = ({
           <div className={`mt-1 flex flex-wrap gap-1 ${isMine ? "justify-end" : ""}`}>
             {Object.entries(msg.reactions).map(([emoji, users]) => (
               <button key={emoji} onClick={() => onReact(msg.id, emoji)}
-                className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[11px] transition-colors ${users.includes(CURRENT_USER.id) ? "border-primary/40 bg-primary/10" : "border-border bg-card hover:bg-secondary"}`}>
+                className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[11px] transition-colors ${users.includes(currentUserId) ? "border-primary/40 bg-primary/10" : "border-border bg-card hover:bg-secondary"}`}>
                 {emoji} <span className="font-medium text-muted-foreground">{users.length}</span>
               </button>
             ))}
@@ -152,6 +154,7 @@ const MessageBubble = ({
 
 /* ─── Main Chat Component ─── */
 const CommunityChat = ({ hostel, onBack }: CommunityChatProps) => {
+  const { user: authUser } = useAuth();
   const [activeChannel, setActiveChannel] = useState(CHAT_CHANNELS[0].id);
   const [messages, setMessages] = useState<Record<string, ChatMessage[]>>(mockMessages);
   const [input, setInput] = useState("");
@@ -160,16 +163,30 @@ const CommunityChat = ({ hostel, onBack }: CommunityChatProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const channel = CHAT_CHANNELS.find((c) => c.id === activeChannel)!;
-  const channelMessages = useMemo(
-    () => (messages[activeChannel] || []).filter((m) => !blockedUsers.has(m.userId)),
-    [messages, activeChannel, blockedUsers]
+  // Filter users by hostel gender
+  const hostelUsers = useMemo(() => 
+    mockChatUsers.filter(u => u.gender === hostel.gender),
+    [hostel.gender]
   );
+
+  const channel = CHAT_CHANNELS.find((c) => c.id === activeChannel)!;
+  
   const usersMap = useMemo(() => {
     const map = new Map<string, ChatUser>();
-    mockChatUsers.forEach((u) => map.set(u.id, u));
+    hostelUsers.forEach((u) => map.set(u.id, u));
     return map;
-  }, []);
+  }, [hostelUsers]);
+
+  const channelMessages = useMemo(() => {
+    const msgs = messages[activeChannel] || [];
+    return msgs.filter((m) => {
+      if (blockedUsers.has(m.userId)) return false;
+      if (m.userId === "admin") return true;
+      // Filter out messages from users of the wrong gender (if they exist in mock data)
+      const u = usersMap.get(m.userId);
+      return u !== undefined;
+    });
+  }, [messages, activeChannel, blockedUsers, usersMap]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -179,7 +196,7 @@ const CommunityChat = ({ hostel, onBack }: CommunityChatProps) => {
     if (!input.trim()) return;
     const msg: ChatMessage = {
       id: `msg-${Date.now()}`,
-      userId: CURRENT_USER.id,
+      userId: authUser?.id || "me",
       text: input.trim(),
       timestamp: new Date().toISOString(),
       reactions: {},
@@ -196,8 +213,9 @@ const CommunityChat = ({ hostel, onBack }: CommunityChatProps) => {
       if (idx === -1) return prev;
       const msg = { ...ch[idx], reactions: { ...ch[idx].reactions } };
       const users = msg.reactions[emoji] ? [...msg.reactions[emoji]] : [];
-      const ui = users.indexOf(CURRENT_USER.id);
-      if (ui >= 0) users.splice(ui, 1); else users.push(CURRENT_USER.id);
+      const myId = authUser?.id || "me";
+      const ui = users.indexOf(myId);
+      if (ui >= 0) users.splice(ui, 1); else users.push(myId);
       if (users.length === 0) delete msg.reactions[emoji]; else msg.reactions[emoji] = users;
       ch[idx] = msg;
       return { ...prev, [activeChannel]: ch };
@@ -232,7 +250,7 @@ const CommunityChat = ({ hostel, onBack }: CommunityChatProps) => {
           </div>
           <div className="flex items-center gap-1">
             <span className="flex h-2 w-2 rounded-full bg-success" />
-            <span className="text-xs text-muted-foreground">{mockChatUsers.filter((u) => u.isOnline).length} online</span>
+            <span className="text-xs text-muted-foreground">{hostelUsers.filter((u) => u.isOnline).length} online</span>
           </div>
         </div>
 
@@ -254,7 +272,7 @@ const CommunityChat = ({ hostel, onBack }: CommunityChatProps) => {
       </header>
 
       {/* Arriving Strip */}
-      <ArrivingStrip />
+      <ArrivingStrip gender={hostel.gender} />
 
       {/* Pinned Messages */}
       <PinnedSection messages={mockPinnedMessages} />
@@ -273,11 +291,12 @@ const CommunityChat = ({ hostel, onBack }: CommunityChatProps) => {
               key={msg.id}
               msg={msg}
               user={usersMap.get(msg.userId)}
-              isMine={msg.userId === CURRENT_USER.id}
+              isMine={msg.userId === (authUser?.id || "me")}
               onReact={handleReact}
               onReport={handleReport}
               onBlock={handleBlock}
               isAdmin={false}
+              currentUserId={authUser?.id || "me"}
             />
           ))
         )}

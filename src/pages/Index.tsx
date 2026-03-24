@@ -1,7 +1,5 @@
-// ─── Index.tsx — with real Supabase auth gating ──────────────────────────────
-// Drop this file at:  src/pages/Index.tsx
-
 import { useState, useCallback, useEffect } from "react";
+import logo from "@/assets/logo.png";
 import SplashScreen from "@/components/SplashScreen";
 import LoginPage from "@/components/LoginPage";
 import RoleSelectPage from "@/components/RoleSelectPage";
@@ -33,14 +31,34 @@ type Tab = "explore" | "wishlists" | "trips" | "messages" | "profile";
 const Index = () => {
   const { user, role, loading, signOut } = useAuth();
 
-  const [page, setPage]                   = useState<Page>("splash");
+  const [page, setPage] = useState<Page>(() => {
+    // 1. If splash seen, avoid initializing to it
+    const splashSeen = sessionStorage.getItem("hostelmate-splash-seen") === "true";
+    const savedPage = sessionStorage.getItem("hostelmate-current-page") as Page;
+    if (splashSeen && savedPage) return savedPage;
+    if (splashSeen) return "student"; // safety default
+    return "splash";
+  });
   const [selectedHostel, setSelectedHostel] = useState<Hostel | null>(null);
-  const [hostels, setHostels]             = useState<Hostel[]>(mockHostels);
-  const [activeTab, setActiveTab]         = useState<Tab>("explore");
-  const [favorites, setFavorites]         = useState<string[]>(() => {
+  const [hostels, setHostels] = useState<Hostel[]>(mockHostels);
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    return (sessionStorage.getItem("hostelmate-current-tab") as Tab) || "explore";
+  });
+  const [favorites, setFavorites] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("hostelmate-favorites") || "[]"); }
     catch { return []; }
   });
+
+  // ── Sync Page & Tab to sessionStorage ─────────────────────────────────────
+  useEffect(() => {
+    if (page !== "splash") {
+      sessionStorage.setItem("hostelmate-current-page", page);
+    }
+  }, [page]);
+
+  useEffect(() => {
+    sessionStorage.setItem("hostelmate-current-tab", activeTab);
+  }, [activeTab]);
 
   // ── After Supabase finishes loading, decide which page to show ───────────
   useEffect(() => {
@@ -85,10 +103,11 @@ const Index = () => {
   }, [user]);
 
   const handleSplashFinish = useCallback(() => {
+    sessionStorage.setItem("hostelmate-splash-seen", "true");
     if (user && role) {
       setPage(role === "owner" ? "owner" : "student");
     } else {
-      setPage("role-select");
+      setPage("student");
     }
   }, [user, role]);
 
@@ -121,27 +140,32 @@ const Index = () => {
   }, []);
 
   const handleTabChange = useCallback((tab: Tab) => {
+    if (!user && (tab === "trips" || tab === "messages")) {
+      setPage("role-select");
+      return;
+    }
     setActiveTab(tab);
     const pageMap: Record<Tab, Page> = {
-      explore:   "student",
+      explore: "student",
       wishlists: "wishlists",
-      trips:     "trips",
-      messages:  "messages",
-      profile:   "profile",
+      trips: "trips",
+      messages: "messages",
+      profile: "profile",
     };
     setPage(pageMap[tab]);
-  }, []);
+  }, [user]);
 
   const showBottomNav = [
     "student", "wishlists", "trips", "messages",
     "profile", "help", "contact",
   ].includes(page);
 
-  // ── Loading screen ────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background">
+        <div className="animate-logo-pop">
+          <img src={logo} alt="Hostel Mate" className="h-20 w-20 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -204,7 +228,13 @@ const Index = () => {
         <HostelDetail
           hostel={selectedHostel}
           onBack={() => setPage("student")}
-          onOpenChat={() => setPage("chat")}
+          onOpenChat={() => {
+            if (!user) {
+              setPage("role-select");
+            } else {
+              setPage("chat");
+            }
+          }}
         />
       ) : (
         <>
@@ -255,6 +285,7 @@ const Index = () => {
       return (
         <>
           <ProfilePage
+            isGuest={!user}
             onBack={() => { setPage("student"); setActiveTab("explore"); }}
             onNavigate={handleNavigate}
             onSignOut={handleSignOut}

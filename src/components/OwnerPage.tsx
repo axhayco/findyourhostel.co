@@ -1,9 +1,10 @@
 import { Hostel, mockHostels, ALL_AMENITIES } from "@/data/hostels";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
-  ArrowLeft, Plus, X, Pencil, Trash2, Users, BedDouble, IndianRupee,
-  Building2, Eye, ChevronDown, Check, MapPin, Phone, Star, Wifi, WifiOff
+  ArrowLeft, Plus, X, Pencil, Trash2, Users, BedDouble,
+  Building2, Eye, Check, MapPin, Star, Wifi, WifiOff, ImagePlus, Loader2
 } from "lucide-react";
+import { uploadHostelImage } from "@/lib/upload";
 import hostel1 from "@/assets/hostel1.jpg";
 
 interface OwnerPageProps {
@@ -24,6 +25,7 @@ interface HostelForm {
   gender: "male" | "female";
   description: string;
   contactPhone: string;
+  /** Existing image URL (for saved hostels) */
   image: string;
   amenities: string[];
 }
@@ -51,10 +53,14 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
   const myHostels = useMemo(() => hostels.filter((h) => h.ownerId === ownerId), [hostels, ownerId]);
   const [modal, setModal] = useState<ModalMode>(null);
   const [form, setForm] = useState<HostelForm>(emptyForm);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("")
+  const [uploading, setUploading] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [viewHostel, setViewHostel] = useState<Hostel | null>(null);
   const [hwOnline, setHwOnline] = useState(true);
   const [lastPing, setLastPing] = useState(new Date());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Simulate hardware ping every 30s with random online/offline
   useEffect(() => {
@@ -75,6 +81,8 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
 
   const openAdd = () => {
     setForm(emptyForm);
+    setImageFile(null);
+    setImagePreview("");
     setEditId(null);
     setModal("add");
   };
@@ -92,8 +100,17 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
       image: h.image,
       amenities: [...h.amenities],
     });
+    setImageFile(null);
+    setImagePreview(h.image);
     setEditId(h.id);
     setModal("edit");
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const openOccupancy = (h: Hostel) => {
@@ -101,36 +118,50 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
     setModal("occupancy");
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.rent) return;
-    const img = form.image || hostel1;
-    const hostelData: Hostel = {
-      id: editId || Date.now().toString(),
-      ownerId,
-      name: form.name,
-      location: form.location || "New Location",
-      rent: Number(form.rent),
-      rating: 4.0,
-      vacancies: Math.min(Number(form.vacancies) || 0, Number(form.totalCapacity) || 0),
-      totalCapacity: Number(form.totalCapacity) || 10,
-      gender: form.gender,
-      image: img,
-      photos: [img],
-      amenities: form.amenities,
-      description: form.description || "No description provided.",
-      contactPhone: form.contactPhone || "+91 00000 00000",
-      lat: 12.9716,
-      lng: 77.5946,
-    };
-
-    if (editId) {
-      setHostels(hostels.map((h) => (h.id === editId ? { ...h, ...hostelData } : h)));
-    } else {
-      setHostels([hostelData, ...hostels]);
+    setUploading(true);
+    try {
+      let img = form.image || hostel1;
+      if (imageFile) {
+        img = await uploadHostelImage(imageFile);
+      }
+      const hostelData: Hostel = {
+        id: editId || Date.now().toString(),
+        ownerId,
+        name: form.name,
+        location: form.location || "New Location",
+        area: form.location.split(",")[0]?.trim() || "New Location",
+        city: form.location.split(",")[1]?.trim() || "Hyderabad",
+        nearbyCollege: "",
+        rent: Number(form.rent),
+        rating: 4.0,
+        vacancies: Math.min(Number(form.vacancies) || 0, Number(form.totalCapacity) || 0),
+        totalCapacity: Number(form.totalCapacity) || 10,
+        gender: form.gender,
+        image: img,
+        photos: [img],
+        amenities: form.amenities,
+        description: form.description || "No description provided.",
+        contactPhone: form.contactPhone || "+91 00000 00000",
+        lat: 12.9716,
+        lng: 77.5946,
+      };
+      if (editId) {
+        setHostels(hostels.map((h) => (h.id === editId ? { ...h, ...hostelData } : h)));
+      } else {
+        setHostels([hostelData, ...hostels]);
+      }
+      setModal(null);
+      setForm(emptyForm);
+      setImageFile(null);
+      setImagePreview("");
+      setEditId(null);
+    } catch (err) {
+      alert(`Upload failed: ${(err as Error).message}`);
+    } finally {
+      setUploading(false);
     }
-    setModal(null);
-    setForm(emptyForm);
-    setEditId(null);
   };
 
   const handleDelete = (id: string) => {
@@ -360,9 +391,32 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
                 <input type="tel" placeholder="+91 98765 43210" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} className={inputClass} />
               </div>
 
+              {/* Photo Upload */}
               <div>
-                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Image URL (optional)</label>
-                <input type="text" placeholder="https://..." value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} className={inputClass} />
+                <label className="mb-1 block text-xs font-semibold text-muted-foreground">Hostel Photo (optional)</label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input bg-background py-5 transition-colors hover:border-primary hover:bg-primary/5"
+                >
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Preview" className="h-28 w-full rounded-lg object-cover" />
+                  ) : (
+                    <>
+                      <ImagePlus className="h-7 w-7 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">Click to select a photo</p>
+                    </>
+                  )}
+                  {imagePreview && (
+                    <span className="absolute bottom-2 right-2 rounded-lg bg-primary/80 px-2 py-1 text-[10px] font-semibold text-white">Change</span>
+                  )}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
               </div>
 
               {/* Amenities */}
@@ -392,9 +446,14 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
 
             <button
               onClick={handleSave}
-              className="mt-5 w-full rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+              disabled={uploading}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {modal === "add" ? "Add Hostel" : "Save Changes"}
+              {uploading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Uploading photo...</>
+              ) : (
+                modal === "add" ? "Add Hostel" : "Save Changes"
+              )}
             </button>
           </div>
         </div>

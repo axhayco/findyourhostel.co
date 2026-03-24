@@ -6,7 +6,7 @@ import logo from "@/assets/logo.png";
 import { useState } from "react";
 import {
   Mail, Phone, ArrowRight, Lock, Eye, EyeOff,
-  AlertCircle, Hash,
+  AlertCircle, Hash, User,
 } from "lucide-react";
 import { useAuth, type UserRole } from "@/context/AuthContext";
 
@@ -29,6 +29,7 @@ const LoginPage = ({ onLogin, role }: LoginPageProps) => {
   const [phoneStep, setPhoneStep] = useState<PhoneStep>("input");
 
   // Email fields
+  const [fullName, setFullName]   = useState("");
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,9 +51,11 @@ const LoginPage = ({ onLogin, role }: LoginPageProps) => {
     if (!emailRegex.test(trimEmail)) { setError("Enter a valid email address"); return; }
     if (password.length < 6)         { setError("Password must be at least 6 characters"); return; }
 
+    if (isSignUp && !fullName.trim()) { setError("Please enter your full name"); return; }
+
     setLoading(true);
     if (isSignUp) {
-      const { error } = await signUpWithEmail(trimEmail, password, role);
+      const { error } = await signUpWithEmail(trimEmail, password, role, fullName.trim());
       if (error) { setError(error); }
       else { onLogin(); }
     } else {
@@ -169,8 +172,28 @@ const LoginPage = ({ onLogin, role }: LoginPageProps) => {
           {/* ── EMAIL MODE ── */}
           {mode === "email" && (
             <>
+              {/* Full Name */}
+              {isSignUp && (
+                <div className="mb-4">
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => { setFullName(e.target.value); clearMessages(); }}
+                      onKeyDown={handleKeyDown}
+                      placeholder="John Doe"
+                      className="w-full rounded-xl border border-input bg-background py-3 pl-10 pr-4 text-sm text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-ring/20"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Email */}
-              <div>
+              <div className="mb-4">
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
                   Email Address
                 </label>
@@ -188,7 +211,7 @@ const LoginPage = ({ onLogin, role }: LoginPageProps) => {
               </div>
 
               {/* Password */}
-              <div>
+              <div className="mb-4">
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
                   Password
                 </label>

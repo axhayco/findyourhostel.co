@@ -9,8 +9,8 @@ import { createClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = "https://mlnvpxagdcqcayedjhld.supabase.co";
 
-// Lovable Cloud injects these as Vercel env vars at build time.
-// Fallback to hardcoded values if env vars are missing.
+// Reads the anon key from the .env file (VITE_SUPABASE_ANON_KEY).
+// Fallback to the hardcoded value if the env var is missing.
 const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ??
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1sbnZweGFnZGNxY2F5ZWRqaGxkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxOTE2NDAsImV4cCI6MjA4OTc2NzY0MH0.FnbT8tWSYqCBgIP2GpAfgvU756OG39dq7Sr86giJncU";

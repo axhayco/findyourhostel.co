@@ -14,7 +14,7 @@ interface AuthContextValue {
   loading: boolean;
 
   // Email + password
-  signUpWithEmail: (email: string, password: string, role: UserRole) => Promise<{ error: string | null }>;
+  signUpWithEmail: (email: string, password: string, role: UserRole, fullName?: string) => Promise<{ error: string | null }>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
 
   // Google OAuth
@@ -63,12 +63,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // ── Email sign-up ────────────────────────────────────────────────────────
   const signUpWithEmail = useCallback(
-    async (email: string, password: string, role: UserRole) => {
+    async (email: string, password: string, role: UserRole, fullName?: string) => {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { role },
+          data: { role, full_name: fullName, name: fullName },
           emailRedirectTo: `${window.location.origin}/`,
         },
       });
