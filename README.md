@@ -1,6 +1,6 @@
-          ===🚀 HostelMate – Find Your Perfect Stay ===
+          ===🚀 HOSTELMATE – Find Your Perfect Stay ===
 
- A smart hostel booking web app that helps students and travelers find hostels easily, while enabling hostel owners to manage bookings, rooms, and revenue efficiently
+ A smart hostel booking web app that helps students find hostels easily, while enabling hostel owners to manage bookings, rooms, and revenue efficiently
 ----------------------------------------------------------------------------------------------------------
 ✨ Features -
 •Instant booking
