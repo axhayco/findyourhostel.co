@@ -19,6 +19,7 @@ interface Review {
 interface HostelDetailProps {
   hostel: Hostel;
   onBack: () => void;
+  onBook?: () => void;
   onOpenChat?: () => void;
 }
 
@@ -71,7 +72,7 @@ const StarRating = ({
   </div>
 );
 
-const HostelDetail = ({ hostel, onBack, onOpenChat }: HostelDetailProps) => {
+const HostelDetail = ({ hostel, onBack, onBook, onOpenChat }: HostelDetailProps) => {
   const [activePhoto, setActivePhoto] = useState(0);
   const storageKey = `reviews-${hostel.id}`;
 
@@ -332,11 +333,22 @@ const HostelDetail = ({ hostel, onBack, onOpenChat }: HostelDetailProps) => {
         {/* ── Feature #4 — Complaint & Maintenance Tracker ────────── */}
         <ComplaintForm hostelId={hostel.id} hostelName={hostel.name} />
 
+        {/* ── Booking Action ────────────────────────────────────────── */}
+        <div className="mb-4">
+          <button
+            onClick={onBook}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold text-primary-foreground shadow-lg transition-all hover:bg-primary/90 active:scale-[0.98]"
+          >
+            <Sparkles className="h-5 w-5" />
+            Reserve Now
+          </button>
+        </div>
+
         {/* ── Contact ─────────────────────────────────────────────── */}
         <div className="pb-6">
           <a
             href={`tel:${hostel.contactPhone}`}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.98]"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-secondary py-4 text-base font-bold text-foreground transition-all hover:bg-secondary/80 active:scale-[0.98]"
           >
             <Phone className="h-5 w-5" />
             Contact Owner — {hostel.contactPhone}

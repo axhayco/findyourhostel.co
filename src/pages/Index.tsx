@@ -12,7 +12,7 @@ import HelpPage from "@/components/HelpPage";
 import ContactPage from "@/components/ContactPage";
 import BottomNav from "@/components/BottomNav";
 import WishlistsPage from "@/components/WishlistsPage";
-import TripsPage from "@/components/TripsPage";
+import TripsPage, { Booking } from "@/components/TripsPage";
 import MessagesPage from "@/components/MessagesPage";
 import { Hostel, mockHostels } from "@/data/hostels";
 import { useAuth } from "@/context/AuthContext";
@@ -48,6 +48,10 @@ const Index = () => {
     try { return JSON.parse(localStorage.getItem("hostelmate-favorites") || "[]"); }
     catch { return []; }
   });
+  const [bookings, setBookings] = useState<Booking[]>(() => {
+    try { return JSON.parse(localStorage.getItem("hostelmate-bookings") || "[]"); }
+    catch { return []; }
+  });
 
   // ── Sync Page & Tab to sessionStorage ─────────────────────────────────────
   useEffect(() => {
@@ -59,6 +63,10 @@ const Index = () => {
   useEffect(() => {
     sessionStorage.setItem("hostelmate-current-tab", activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem("hostelmate-bookings", JSON.stringify(bookings));
+  }, [bookings]);
 
   // ── After Supabase finishes loading, decide which page to show ───────────
   useEffect(() => {
@@ -137,6 +145,21 @@ const Index = () => {
       localStorage.setItem("hostelmate-favorites", JSON.stringify(next));
       return next;
     });
+  }, []);
+
+  const handleBookHostel = useCallback((hostel: Hostel) => {
+    const newBooking: Booking = {
+      id: `bk-${Date.now()}`,
+      hostelName: hostel.name,
+      location: hostel.location,
+      image: hostel.image,
+      checkIn: new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      checkOut: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+      status: "upcoming",
+    };
+    setBookings((prev) => [newBooking, ...prev]);
+    setPage("trips");
+    setActiveTab("trips");
   }, []);
 
   const handleTabChange = useCallback((tab: Tab) => {
@@ -228,6 +251,7 @@ const Index = () => {
         <HostelDetail
           hostel={selectedHostel}
           onBack={() => setPage("student")}
+          onBook={() => handleBookHostel(selectedHostel)}
           onOpenChat={() => {
             if (!user) {
               setPage("role-select");
@@ -264,7 +288,7 @@ const Index = () => {
     case "trips":
       return (
         <>
-          <TripsPage bookings={[]} />
+          <TripsPage bookings={bookings} />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
         </>
       );

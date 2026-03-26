@@ -2,8 +2,14 @@ import { Hostel, mockHostels, ALL_AMENITIES } from "@/data/hostels";
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
   ArrowLeft, Plus, X, Pencil, Trash2, Users, BedDouble,
-  Building2, Eye, Check, MapPin, Star, Wifi, WifiOff, ImagePlus, Loader2
+  Building2, Eye, Check, MapPin, Star, Wifi, WifiOff, ImagePlus, Loader2,
+  TrendingUp, TrendingDown, IndianRupee
 } from "lucide-react";
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
+  ResponsiveContainer, Cell, AreaChart, Area 
+} from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { uploadHostelImage } from "@/lib/upload";
 import hostel1 from "@/assets/hostel1.jpg";
 
@@ -78,6 +84,23 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
     const vacant = myHostels.reduce((s, h) => s + h.vacancies, 0);
     return { totalBeds, occupied, vacant, occupancyRate: totalBeds ? Math.round((occupied / totalBeds) * 100) : 0 };
   }, [myHostels]);
+
+  // Mock revenue data for the chart
+  const revenueData = useMemo(() => [
+    { month: "Jan", revenue: stats.occupied * 6000, occupancy: 65 },
+    { month: "Feb", revenue: stats.occupied * 6200, occupancy: 68 },
+    { month: "Mar", revenue: stats.occupied * 6500, occupancy: 72 },
+    { month: "Apr", revenue: stats.occupied * 6800, occupancy: 75 },
+    { month: "May", revenue: stats.occupied * (Number(form.rent) || 7000), occupancy: stats.occupancyRate },
+  ], [stats, form.rent]);
+
+  const getSmartPrice = (h: Hostel) => {
+    const occ = h.totalCapacity ? ((h.totalCapacity - h.vacancies) / h.totalCapacity) * 100 : 0;
+    if (occ >= 90) return Math.round(h.rent * 1.15); // Demand is high
+    if (occ >= 75) return Math.round(h.rent * 1.05);
+    if (occ <= 30) return Math.round(h.rent * 0.90); // Low demand
+    return h.rent;
+  };
 
   const openAdd = () => {
     setForm(emptyForm);
@@ -228,6 +251,53 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
           </div>
         </div>
 
+        {/* Revenue & Analytics Section */}
+        <section className="rounded-2xl bg-card p-5 shadow-card">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-bold text-foreground">Revenue & Analytics</h2>
+            <div className="flex items-center gap-1 text-xs font-semibold text-success">
+              <TrendingUp className="h-3 w-3" /> +12% from last month
+            </div>
+          </div>
+          <div className="h-64 w-full">
+            <ChartContainer config={{ 
+              revenue: { label: "Revenue", color: "hsl(var(--primary))" },
+              occupancy: { label: "Occupancy %", color: "hsl(var(--accent))" } 
+            }}>
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                <YAxis hide />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="hsl(var(--primary))" 
+                  fillOpacity={1} 
+                  fill="url(#colorRev)" 
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ChartContainer>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Estimated Revenue</p>
+              <p className="text-lg font-bold text-foreground">₹{(stats.occupied * (Number(form.rent) || 7000)).toLocaleString()}</p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Potential Revenue</p>
+              <p className="text-lg font-bold text-muted-foreground">₹{(stats.totalBeds * (Number(form.rent) || 7000)).toLocaleString()}</p>
+            </div>
+          </div>
+        </section>
+
         {/* Hostel List */}
         <div className="space-y-3">
           {myHostels.map((h) => {
@@ -254,6 +324,22 @@ const OwnerPage = ({ hostels, onHostelsChange, onBack, ownerId }: OwnerPageProps
                       <span className="font-bold text-primary">₹{h.rent.toLocaleString()}<span className="font-normal text-muted-foreground">/mo</span></span>
                       <span className="capitalize rounded-full bg-secondary px-2 py-0.5 text-secondary-foreground">{h.gender}</span>
                     </div>
+
+                    {/* Smart Pricing Suggestion */}
+                    {h.totalCapacity > 0 && (
+                      <div className="mt-2 flex items-center gap-2 rounded-lg bg-primary/5 p-2 border border-primary/10">
+                        <IndianRupee className="h-3 w-3 text-primary" />
+                        <div className="flex-1">
+                          <p className="text-[10px] text-muted-foreground font-medium">Smart Pricing Suggestion</p>
+                          <p className="text-xs font-bold text-foreground">
+                            Suggest ₹{getSmartPrice(h).toLocaleString()} 
+                            <span className={`ml-2 text-[10px] ${getSmartPrice(h) > h.rent ? "text-success" : getSmartPrice(h) < h.rent ? "text-destructive" : "text-muted-foreground"}`}>
+                              ({getSmartPrice(h) > h.rent ? "+" : ""}{Math.round(((getSmartPrice(h) - h.rent)/h.rent)*100)}%)
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Mini occupancy bar */}
                     <div className="mt-2">
