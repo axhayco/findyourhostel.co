@@ -17,90 +17,265 @@ interface ConfirmAction {
   onConfirm: () => void;
 }
 
-// ─── System Prompt Builder ────────────────────────────────────────────────────
+// ─── Local Agent Engine (no external API needed) ──────────────────────────────
 
-function buildSystemPrompt(role: "student" | "owner") {
-  const identity = `
-You are the HostelMate Digital Assistant — a built-in assistant for HostelMate, a hostel management platform in Hyderabad, India.
+const ELECTRICITY_DATA: Record<string, { balance: string; daysLeft: string }> = {
+  "304": { balance: "₹145", daysLeft: "~2 days" },
+  "102": { balance: "₹520", daysLeft: "~8 days" },
+  "201": { balance: "₹310", daysLeft: "~5 days" },
+  "110": { balance: "₹80", daysLeft: "~1 day" },
+};
 
-IDENTITY RULES (non-negotiable):
-- NEVER say "I am an AI", "I'm a language model", "As an AI", or anything that reveals you are an AI.
-- NEVER say "I don't have access to real data" or "I cannot look up". Play the role fully.
-- You ARE the hostel's digital system. Say "I've checked your records", "I can process that."
-- Tone: friendly, concise, campus-native Indian English. Numbers in ₹ rupees.
-- Keep responses SHORT — 1-3 sentences unless listing data.
-- Never use markdown formatting like ** or ## in responses.
+const MESS_MENU: Record<string, Record<string, string>> = {
+  today: {
+    breakfast: "Poha, Bread Butter, Tea/Coffee",
+    lunch: "Rajma Chawal, Roti, Mix Veg, Salad",
+    dinner: "Paneer Butter Masala, Naan, Dal Fry, Rice",
+  },
+  tomorrow: {
+    breakfast: "Idli Sambar, Coconut Chutney, Coffee",
+    lunch: "Chicken Curry, Steamed Rice, Dal Tadka, Raita",
+    dinner: "Chole Bhature, Jeera Rice, Green Salad",
+  },
+};
 
-MISSING PARAMETER PROTOCOL:
-- If user triggers an action but is missing required info, ask for ONE missing field at a time.
-- Never ask for all fields at once. Never execute until all required fields are collected.
-- Remember all context within the conversation.
+const PENDING_LEAVES = [
+  { name: "John Doe", room: "102", dates: "Oct 12-15", id: "LV-2841" },
+  { name: "Priya Sharma", room: "204", dates: "Oct 14-16", id: "LV-2843" },
+  { name: "Arjun Reddy", room: "310", dates: "Oct 13-14", id: "LV-2845" },
+];
 
-HIGH-IMPACT CONFIRMATION RULE:
-- Before executing: payments, broadcasts, leave rejection — summarize and say "Shall I proceed?"
-- Wait for explicit yes/confirm before acting.
-- If cancelled, say "Got it, cancelled." and stop.
+let leaveCounter = 2847;
 
-ESCALATION:
-- If confused after 2 turns, say "Let me connect you to the hostel team directly" and end with: https://wa.me/919999999999
-`.trim();
-
-  const studentContext = `
-PERSONA: Student resident at HostelMate hostel.
-
-SKILLS YOU HANDLE:
-1. CheckElectricityBalance — requires: roomNumber
-2. GetMessMenu — requires: day, mealType
-3. RequestLeave — requires: startDate, endDate, reason
-4. RateMessMeal — requires: mealType, rating (1-5), optional feedback
-
-SIMULATED LIVE DATA (present this as real):
-- Electricity: Room 304: ₹145 (~2 days left). Room 102: ₹520 (~8 days left).
-- Today's lunch: Rajma Chawal, Roti, Mix Veg. Today's dinner: Paneer Butter Masala with Naan.
-- Tomorrow's breakfast: Idli Sambar. Tomorrow's lunch: Chicken Curry, Rice, Dal.
-- Leave requests: pending state, generate ticket IDs like LV-2847.
-- Mess rating average this week: 3.8/5.
-`.trim();
-
-  const ownerContext = `
-PERSONA: Hostel Owner / Administrator.
-
-SKILLS YOU HANDLE:
-1. CheckOccupancyStats — optional: hostelId
-2. BroadcastNotice — requires: message, urgency (Low/Normal/High/Critical), target
-3. ApproveLeave — requires: leaveId or student name, decision (Approved/Rejected), optional comments
-4. GetPendingLeaves — no params needed
-
-SIMULATED LIVE DATA (present this as real):
-- Occupancy: 85% across 3 properties, 12 vacant beds. Monthly revenue: ~₹2,45,000.
-- Pending leaves: John Doe Room 102 (Oct 12-15), Priya Sharma Room 204 (Oct 14-16), Arjun Reddy Room 310 (Oct 13-14).
-- Last broadcast: "Water supply disruption 9-11am" sent 2 days ago to all 120 residents.
-
-CONFIRMATION REQUIRED FOR: Any BroadcastNotice, any leave Rejection, payment actions.
-`.trim();
-
-  return `${identity}\n\n${role === "student" ? studentContext : ownerContext}`;
+interface ConversationState {
+  awaitingRoomNumber?: boolean;
+  awaitingLeaveStart?: boolean;
+  awaitingLeaveEnd?: boolean;
+  awaitingLeaveReason?: boolean;
+  leaveStart?: string;
+  leaveEnd?: string;
+  awaitingBroadcastMessage?: boolean;
+  awaitingBroadcastUrgency?: boolean;
+  broadcastMessage?: string;
+  awaitingMealRating?: boolean;
+  awaitingMealFeedback?: boolean;
+  mealType?: string;
+  mealRating?: number;
+  awaitingLeaveDecision?: boolean;
+  leaveTarget?: string;
 }
 
-// ─── Claude API Call ──────────────────────────────────────────────────────────
+let convState: ConversationState = {};
 
-async function callClaude(
-  messages: { role: "user" | "assistant"; content: string }[],
-  systemPrompt: string
-): Promise<string> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      system: systemPrompt,
-      messages,
-    }),
-  });
-  if (!response.ok) throw new Error(`API ${response.status}`);
-  const data = await response.json();
-  return data.content?.[0]?.text ?? "I couldn't process that. Please try again.";
+function handleAgentQuery(
+  input: string,
+  role: "student" | "owner"
+): { reply: string; needsConfirm: boolean } {
+  const q = input.toLowerCase().trim();
+
+  // ── Handle ongoing conversation states ──────────────────────────────────
+  if (convState.awaitingRoomNumber) {
+    convState.awaitingRoomNumber = false;
+    const room = q.replace(/[^0-9]/g, "");
+    const data = ELECTRICITY_DATA[room];
+    if (data) {
+      return { reply: `Room ${room} electricity balance: ${data.balance} remaining (${data.daysLeft} left). Remember to top up before it runs out!`, needsConfirm: false };
+    }
+    return { reply: `I couldn't find records for Room ${room}. Please check your room number and try again.`, needsConfirm: false };
+  }
+
+  if (convState.awaitingLeaveStart) {
+    convState.awaitingLeaveStart = false;
+    convState.leaveStart = input.trim();
+    convState.awaitingLeaveEnd = true;
+    return { reply: `Got it, starting ${convState.leaveStart}. What's your return date?`, needsConfirm: false };
+  }
+
+  if (convState.awaitingLeaveEnd) {
+    convState.awaitingLeaveEnd = false;
+    convState.leaveEnd = input.trim();
+    convState.awaitingLeaveReason = true;
+    return { reply: "And what's the reason for your leave?", needsConfirm: false };
+  }
+
+  if (convState.awaitingLeaveReason) {
+    convState.awaitingLeaveReason = false;
+    const ticketId = `LV-${++leaveCounter}`;
+    const reply = `I'll submit your leave request:\n• From: ${convState.leaveStart}\n• To: ${convState.leaveEnd}\n• Reason: ${input.trim()}\n• Ticket: ${ticketId}\n\nShall I proceed?`;
+    return { reply, needsConfirm: true };
+  }
+
+  if (convState.awaitingBroadcastMessage) {
+    convState.awaitingBroadcastMessage = false;
+    convState.broadcastMessage = input.trim();
+    convState.awaitingBroadcastUrgency = true;
+    return { reply: "What urgency level? (Low / Normal / High / Critical)", needsConfirm: false };
+  }
+
+  if (convState.awaitingBroadcastUrgency) {
+    convState.awaitingBroadcastUrgency = false;
+    const urgency = input.trim();
+    const reply = `Ready to broadcast to all residents:\n• Message: "${convState.broadcastMessage}"\n• Urgency: ${urgency}\n\nShall I proceed?`;
+    convState.broadcastMessage = undefined;
+    return { reply, needsConfirm: true };
+  }
+
+  if (convState.awaitingMealRating) {
+    convState.awaitingMealRating = false;
+    const rating = parseInt(q.replace(/[^0-9]/g, ""));
+    if (rating >= 1 && rating <= 5) {
+      convState.mealRating = rating;
+      convState.awaitingMealFeedback = true;
+      return { reply: `${rating}/5 — noted! Any additional feedback? (or say "skip")`, needsConfirm: false };
+    }
+    return { reply: "Please give a rating between 1 and 5.", needsConfirm: false };
+  }
+
+  if (convState.awaitingMealFeedback) {
+    convState.awaitingMealFeedback = false;
+    const feedback = q === "skip" || q === "no" ? "" : input.trim();
+    const result = `Thanks! Your ${convState.mealType || "meal"} rating of ${convState.mealRating}/5 has been recorded.${feedback ? ` Feedback: "${feedback}"` : ""} This week's average mess rating is 3.8/5.`;
+    convState.mealType = undefined;
+    convState.mealRating = undefined;
+    return { reply: result, needsConfirm: false };
+  }
+
+  if (convState.awaitingLeaveDecision) {
+    convState.awaitingLeaveDecision = false;
+    const isApprove = q.includes("approve") || q.includes("yes");
+    const isReject = q.includes("reject") || q.includes("no") || q.includes("deny");
+    if (isReject) {
+      const reply = `I'll reject the leave for ${convState.leaveTarget}. Shall I proceed?`;
+      return { reply, needsConfirm: true };
+    }
+    if (isApprove) {
+      return { reply: `Done! Leave for ${convState.leaveTarget} has been approved. They'll be notified shortly.`, needsConfirm: false };
+    }
+    return { reply: "Please say 'approve' or 'reject' for this leave request.", needsConfirm: false };
+  }
+
+  // ── Student Skills ──────────────────────────────────────────────────────
+  if (role === "student") {
+    // Electricity balance
+    if (q.includes("electric") || q.includes("balance") || q.includes("power") || q.includes("unit")) {
+      const roomMatch = q.match(/(?:room\s*)?(\d{3})/);
+      if (roomMatch) {
+        const data = ELECTRICITY_DATA[roomMatch[1]];
+        if (data) {
+          return { reply: `Room ${roomMatch[1]} electricity balance: ${data.balance} remaining (${data.daysLeft} left). Top up soon if it's running low!`, needsConfirm: false };
+        }
+        return { reply: `I couldn't find records for Room ${roomMatch[1]}. Double-check your room number.`, needsConfirm: false };
+      }
+      convState.awaitingRoomNumber = true;
+      return { reply: "Sure, I can check that. What's your room number?", needsConfirm: false };
+    }
+
+    // Mess menu
+    if (q.includes("mess") || q.includes("menu") || q.includes("food") || q.includes("lunch") || q.includes("dinner") || q.includes("breakfast")) {
+      const isTomorrow = q.includes("tomorrow");
+      const day = isTomorrow ? "tomorrow" : "today";
+      const menu = MESS_MENU[day];
+      let mealType: string | null = null;
+      if (q.includes("breakfast")) mealType = "breakfast";
+      else if (q.includes("lunch")) mealType = "lunch";
+      else if (q.includes("dinner")) mealType = "dinner";
+
+      if (mealType) {
+        return { reply: `${day.charAt(0).toUpperCase() + day.slice(1)}'s ${mealType}: ${menu[mealType]}`, needsConfirm: false };
+      }
+      return {
+        reply: `Here's ${day}'s mess menu:\n🌅 Breakfast: ${menu.breakfast}\n🍛 Lunch: ${menu.lunch}\n🌙 Dinner: ${menu.dinner}`,
+        needsConfirm: false,
+      };
+    }
+
+    // Leave request
+    if (q.includes("leave") || q.includes("absence") || q.includes("going home")) {
+      convState.awaitingLeaveStart = true;
+      return { reply: "I can help you submit a leave request. When does your leave start?", needsConfirm: false };
+    }
+
+    // Rate meal
+    if (q.includes("rate") || q.includes("rating")) {
+      let mealType = "today's meal";
+      if (q.includes("breakfast")) mealType = "breakfast";
+      else if (q.includes("lunch")) mealType = "lunch";
+      else if (q.includes("dinner")) mealType = "dinner";
+      convState.mealType = mealType;
+      convState.awaitingMealRating = true;
+      return { reply: `Sure! Rate ${mealType} from 1 to 5:`, needsConfirm: false };
+    }
+  }
+
+  // ── Owner Skills ────────────────────────────────────────────────────────
+  if (role === "owner") {
+    // Occupancy stats
+    if (q.includes("occupancy") || q.includes("stats") || q.includes("vacant") || q.includes("beds") || q.includes("revenue")) {
+      return {
+        reply: "Here are your current stats:\n📊 Overall occupancy: 85% across 3 properties\n🛏️ Vacant beds: 12\n💰 Monthly revenue: ~₹2,45,000\n🏆 Highest: Sunrise Boys Hostel (94%)\n📉 Lowest: Lakshmi Girls PG (72%)",
+        needsConfirm: false,
+      };
+    }
+
+    // Pending leaves
+    if (q.includes("pending") || q.includes("leave")) {
+      const target = PENDING_LEAVES.find(
+        (l) => q.includes(l.name.toLowerCase()) || q.includes(l.id.toLowerCase())
+      );
+      if (target && (q.includes("approve") || q.includes("reject"))) {
+        convState.awaitingLeaveDecision = true;
+        convState.leaveTarget = `${target.name} (${target.id})`;
+        return { reply: `${target.name}, Room ${target.room}, ${target.dates} (${target.id}). Do you want to approve or reject?`, needsConfirm: false };
+      }
+      const list = PENDING_LEAVES.map(
+        (l) => `• ${l.name} — Room ${l.room}, ${l.dates} (${l.id})`
+      ).join("\n");
+      return {
+        reply: `You have ${PENDING_LEAVES.length} pending leave requests:\n${list}\n\nTo act on one, say "approve" or "reject" followed by the student name or ID.`,
+        needsConfirm: false,
+      };
+    }
+
+    // Broadcast
+    if (q.includes("broadcast") || q.includes("notice") || q.includes("announce")) {
+      convState.awaitingBroadcastMessage = true;
+      return { reply: "What message would you like to broadcast to residents?", needsConfirm: false };
+    }
+  }
+
+  // ── General / fallback ──────────────────────────────────────────────────
+  if (q.includes("hi") || q.includes("hello") || q.includes("hey")) {
+    const skills = role === "student"
+      ? "electricity balance, mess menu, leave requests, or meal ratings"
+      : "occupancy stats, pending leaves, or broadcasting notices";
+    return { reply: `Hey there! I can help you with ${skills}. What do you need?`, needsConfirm: false };
+  }
+
+  if (q.includes("thank")) {
+    return { reply: "You're welcome! Let me know if you need anything else. 😊", needsConfirm: false };
+  }
+
+  if (q.includes("help") || q.includes("what can you do")) {
+    if (role === "student") {
+      return {
+        reply: "Here's what I can do:\n1️⃣ Check electricity balance\n2️⃣ Show mess menu (today/tomorrow)\n3️⃣ Submit a leave request\n4️⃣ Rate a meal\n\nJust ask naturally!",
+        needsConfirm: false,
+      };
+    }
+    return {
+      reply: "Here's what I can do:\n1️⃣ Show occupancy stats\n2️⃣ View & act on pending leaves\n3️⃣ Broadcast notices to residents\n\nJust ask naturally!",
+      needsConfirm: false,
+    };
+  }
+
+  // Fallback
+  const fallbackSkills = role === "student"
+    ? "electricity balance, mess menu, leave requests, or meal ratings"
+    : "occupancy stats, pending leaves, or broadcast notices";
+  return {
+    reply: `I'm not sure I understood that. I can help with ${fallbackSkills}. Could you try rephrasing?`,
+    needsConfirm: false,
+  };
 }
 
 // ─── Confirm Card ─────────────────────────────────────────────────────────────
@@ -159,6 +334,7 @@ export const AgentControlPlane = () => {
   // Greeting on open
   useEffect(() => {
     if (isOpen && messages.length === 0 && role) {
+      convState = {}; // Reset conversation state
       const greeting =
         role === "owner"
           ? "Welcome back. Ask me about occupancy stats, pending leaves, or to broadcast a notice."
@@ -179,50 +355,41 @@ export const AgentControlPlane = () => {
     setIsLoading(true);
     setActivePendingId(null);
 
-    try {
-      const history = nextMsgs.map((m) => ({ role: m.role, content: m.content }));
-      const reply = await callClaude(history, buildSystemPrompt(role as "student" | "owner"));
+    // Small delay to feel natural
+    await new Promise((r) => setTimeout(r, 400 + Math.random() * 400));
 
-      const needsConfirm = /shall I proceed|please confirm|should I proceed|confirm this/i.test(reply);
-      const assistantId = `a-${Date.now()}`;
+    const { reply, needsConfirm } = handleAgentQuery(text.trim(), role as "student" | "owner");
+    const assistantId = `a-${Date.now()}`;
 
-      if (needsConfirm) {
-        const confirmAction: ConfirmAction = {
-          label: "High-impact action",
-          detail: reply,
-          onConfirm: async () => {
-            setActivePendingId(null);
-            const confirmUserMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "Confirmed, please proceed." };
-            const withConfirm = [...nextMsgs, { id: assistantId, role: "assistant" as const, content: reply }, confirmUserMsg];
-            setMessages(withConfirm);
-            setIsLoading(true);
-            try {
-              const finalReply = await callClaude(
-                withConfirm.map((m) => ({ role: m.role, content: m.content })),
-                buildSystemPrompt(role as "student" | "owner")
-              );
-              setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: finalReply }]);
-            } catch {
-              setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: "Something went wrong. Please try again." }]);
-            } finally {
-              setIsLoading(false);
-            }
-          },
-        };
-        setMessages((p) => [...p, { id: assistantId, role: "assistant", content: reply, pendingConfirm: confirmAction }]);
-        setActivePendingId(assistantId);
-      } else {
-        setMessages((p) => [...p, { id: assistantId, role: "assistant", content: reply }]);
-      }
-    } catch {
-      setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: "I'm having trouble connecting. Try again in a moment." }]);
-    } finally {
-      setIsLoading(false);
+    if (needsConfirm) {
+      const confirmAction: ConfirmAction = {
+        label: "High-impact action",
+        detail: reply,
+        onConfirm: async () => {
+          setActivePendingId(null);
+          const confirmUserMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "Confirmed, please proceed." };
+          setMessages((p) => [...p, confirmUserMsg]);
+          setIsLoading(true);
+
+          await new Promise((r) => setTimeout(r, 500));
+
+          const { reply: finalReply } = handleAgentQuery("Confirmed, please proceed.", role as "student" | "owner");
+          setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: finalReply }]);
+          setIsLoading(false);
+        },
+      };
+      setMessages((p) => [...p, { id: assistantId, role: "assistant", content: reply, pendingConfirm: confirmAction }]);
+      setActivePendingId(assistantId);
+    } else {
+      setMessages((p) => [...p, { id: assistantId, role: "assistant", content: reply }]);
     }
+
+    setIsLoading(false);
   };
 
   const handleCancel = () => {
     setActivePendingId(null);
+    convState = {}; // Reset any pending state
     setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: "Got it, cancelled. Anything else I can help with?" }]);
   };
 
@@ -236,9 +403,8 @@ export const AgentControlPlane = () => {
       {/* FAB */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 ${
-          isOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
-        }`}
+        className={`fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 ${isOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
+          }`}
         aria-label="Open HostelMate Assistant"
       >
         <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-400 animate-pulse" />
@@ -267,7 +433,7 @@ export const AgentControlPlane = () => {
               </div>
             </div>
             <button
-              onClick={() => { setIsOpen(false); setMessages([]); setActivePendingId(null); }}
+              onClick={() => { setIsOpen(false); setMessages([]); setActivePendingId(null); convState = {}; }}
               className="rounded-full p-2 transition-colors hover:bg-white/10"
             >
               <X className="h-4 w-4" />
@@ -279,16 +445,14 @@ export const AgentControlPlane = () => {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex max-w-[88%] flex-col ${
-                  msg.role === "user" ? "ml-auto items-end" : "items-start"
-                }`}
+                className={`flex max-w-[88%] flex-col ${msg.role === "user" ? "ml-auto items-end" : "items-start"
+                  }`}
               >
                 <div
-                  className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm ${
-                    msg.role === "user"
+                  className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed shadow-sm whitespace-pre-line ${msg.role === "user"
                       ? "rounded-br-sm bg-primary text-primary-foreground"
                       : "rounded-bl-sm border border-border bg-card text-foreground"
-                  }`}
+                    }`}
                 >
                   {msg.content}
                 </div>
