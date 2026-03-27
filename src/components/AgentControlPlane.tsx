@@ -163,22 +163,28 @@ function handleAgentQuery(
   if (role === "student") {
     // Electricity balance
     if (q.includes("electric") || q.includes("balance") || q.includes("power") || q.includes("unit")) {
+      if (!hostel) {
+        return { reply: "To check your electricity balance, please open your hostel's page first. I'll look up your room's balance from there! ⚡", needsConfirm: false };
+      }
       const roomMatch = q.match(/(\d{3})/);
       if (roomMatch) {
         const data = ELECTRICITY_DATA[roomMatch[1]];
         if (data) {
-          return { reply: `Room ${roomMatch[1]} at ${hostelName} — electricity balance: ${data.balance} remaining (${data.daysLeft} left). Top up soon if it's running low!`, needsConfirm: false };
+          return { reply: `Room ${roomMatch[1]} at ${hostel.name} — electricity balance: ${data.balance} remaining (${data.daysLeft} left). Top up soon if it's running low!`, needsConfirm: false };
         }
-        return { reply: `I couldn't find records for Room ${roomMatch[1]} at ${hostelName}. Double-check your room number.`, needsConfirm: false };
+        return { reply: `I couldn't find records for Room ${roomMatch[1]} at ${hostel.name}. Double-check your room number.`, needsConfirm: false };
       }
       convState.awaitingRoomNumber = true;
-      return { reply: `Sure, I can check your electricity balance at ${hostelName}. What's your room number?`, needsConfirm: false };
+      return { reply: `Sure, I can check your electricity balance at ${hostel.name}. What's your room number?`, needsConfirm: false };
     }
 
     // Mess menu
     if (q.includes("mess") || q.includes("menu") || q.includes("food") || q.includes("lunch") || q.includes("dinner") || q.includes("breakfast")) {
+      if (!hostel) {
+        return { reply: "To check the mess menu, please tap on a specific hostel first. I'll then show you today's meals — but only if that hostel provides them! 🍛", needsConfirm: false };
+      }
       if (!hasMeals) {
-        return { reply: `${hostelName} doesn't include meals in the plan (current rent: ₹${hostel?.rent?.toLocaleString() || "N/A"}/mo). You may want to check nearby restaurants or tiffin services.`, needsConfirm: false };
+        return { reply: `${hostel.name} doesn't include meals (rent: ₹${hostel.rent.toLocaleString()}/mo — self-catering plan). You may want to check nearby restaurants or tiffin services.`, needsConfirm: false };
       }
       const isTomorrow = q.includes("tomorrow");
       const day = isTomorrow ? "tomorrow" : "today";
@@ -189,18 +195,21 @@ function handleAgentQuery(
       else if (q.includes("dinner")) mealType = "dinner";
 
       if (mealType) {
-        return { reply: `${day.charAt(0).toUpperCase() + day.slice(1)}'s ${mealType} at ${hostelName}: ${menu[mealType]}`, needsConfirm: false };
+        return { reply: `${day.charAt(0).toUpperCase() + day.slice(1)}'s ${mealType} at ${hostel.name}: ${menu[mealType]}`, needsConfirm: false };
       }
       return {
-        reply: `Here's ${day}'s mess menu at ${hostelName}:\n🌅 Breakfast: ${menu.breakfast}\n🍛 Lunch: ${menu.lunch}\n🌙 Dinner: ${menu.dinner}`,
+        reply: `Here's ${day}'s mess menu at ${hostel.name}:\n🌅 Breakfast: ${menu.breakfast}\n🍛 Lunch: ${menu.lunch}\n🌙 Dinner: ${menu.dinner}`,
         needsConfirm: false,
       };
     }
 
     // Leave request
     if (q.includes("leave") || q.includes("absence") || q.includes("going home")) {
+      if (!hostel) {
+        return { reply: "To submit a leave request, please open your hostel's page first so I can record it in the right place. 🏠", needsConfirm: false };
+      }
       convState.awaitingLeaveStart = true;
-      return { reply: `I can help you submit a leave request from ${hostelName}. When does your leave start?`, needsConfirm: false };
+      return { reply: `I can help you submit a leave request from ${hostel.name}. When does your leave start?`, needsConfirm: false };
     }
 
     // Rate meal
@@ -305,11 +314,27 @@ function handleAgentQuery(
     return { reply: `Done! Your request has been processed successfully. Reference: ${finalTicketId}. You'll receive a notification shortly.`, needsConfirm: false };
   }
 
+  // ── Student: explore/search skills (no hostel selected) ─────────────────
+  if (role === "student" && !hostel) {
+    if (q.includes("find") || q.includes("search") || q.includes("look") || q.includes("hostel") || q.includes("explore")) {
+      const count = allHostels.length;
+      const withMeals = allHostels.filter(h => h.amenities?.includes("Meals Included")).length;
+      const minRent = allHostels.length ? Math.min(...allHostels.map(h => h.rent)) : 0;
+      return {
+        reply: `We currently have ${count} hostels listed on HostelMate! 🏠\n• ${withMeals} include meals\n• Starting from ₹${minRent.toLocaleString()}/mo\n\nScroll through the listings and tap any card to explore details, amenities, and vacancies.`,
+        needsConfirm: false,
+      };
+    }
+  }
+
   // ── General / fallback ──────────────────────────────────────────────────
   if (q.includes("hi") || q.includes("hello") || q.includes("hey")) {
-    const skillList = role === "student"
-      ? `electricity balance${hasMeals ? ", mess menu" : ""}, leave requests, or hostel details`
-      : "occupancy stats, pending leaves, or broadcasting notices";
+    const isExploring = role === "student" && !hostel;
+    const skillList = isExploring
+      ? "find the right hostel, check vacancies, or compare amenities"
+      : role === "student"
+        ? `electricity balance${hasMeals ? ", mess menu" : ""}, leave requests, or hostel details`
+        : "occupancy stats, pending leaves, or broadcasting notices";
     return { reply: `Hey there! I can help you with ${skillList}. What do you need?`, needsConfirm: false };
   }
 
@@ -411,7 +436,7 @@ export const AgentControlPlane = ({ hasBottomNav }: { hasBottomNav?: boolean }) 
         const hasMeals = selectedHostel.amenities?.includes("Meals Included");
         greeting = `Hey! You're viewing ${selectedHostel.name} (${selectedHostel.location}). I can help with your electricity balance${hasMeals ? ", today's mess menu" : ""}, or submit a leave request.`;
       } else {
-        greeting = "Hey! Ask me about your electricity balance, today's mess menu, or to submit a leave request.";
+        greeting = `Hey! I'm your HostelMate assistant. 👋\nBrowse the listings and tap a hostel to unlock resident features like electricity balance, mess menus, and leave requests. Or ask me to help you find the right place!`;
       }
       setMessages([{ id: "init", role: "assistant", content: greeting }]);
     }
@@ -473,7 +498,7 @@ export const AgentControlPlane = ({ hasBottomNav }: { hasBottomNav?: boolean }) 
             "Request leave",
             "Hostel details",
           ]
-        : ["Electricity balance", "Today's mess menu", "Request leave"]
+        : ["Find a hostel", "How many hostels?", "Help"]
       : ["Occupancy stats", "Pending leaves", "Broadcast a notice"];
 
   return (
