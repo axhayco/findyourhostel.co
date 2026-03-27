@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import {
   ArrowLeft, Star, MapPin, Phone, Wifi, Wind, Utensils, Dumbbell,
   ShieldCheck, Car, Zap, Droplets, BookOpen, Home, Sparkles, Sun,
-  Send, User, MessageCircle,
+  Send, User, MessageCircle, Trash2,
 } from "lucide-react";
 import ComplaintForm from "@/components/ComplaintForm";       // Feature #4
 import MessRatingWidget from "@/components/MessRatingWidget"; // Feature #5
@@ -115,6 +115,12 @@ const HostelDetail = ({ hostel, onBack, onBook, onOpenChat }: HostelDetailProps)
     setNewName("");
     setNewRating(0);
     setNewComment("");
+  };
+
+  const handleDeleteReview = (id: string) => {
+    if (window.confirm("Are you sure you want to delete this review?")) {
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+    }
   };
 
   const vacancyColor =
@@ -308,6 +314,12 @@ const HostelDetail = ({ hostel, onBack, onBook, onOpenChat }: HostelDetailProps)
                     <div className="flex items-center gap-1 text-sm font-semibold">
                       <Star className="h-3.5 w-3.5 fill-warning text-warning" />
                       {r.rating}
+                      <button 
+                        onClick={() => handleDeleteReview(r.id)}
+                        className="ml-2 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                   <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">

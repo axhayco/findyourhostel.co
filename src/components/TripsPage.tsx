@@ -12,6 +12,8 @@ interface Booking {
 
 interface TripsPageProps {
   bookings: Booking[];
+  onEditBooking?: (id: string, checkIn: string, checkOut: string) => void;
+  onCancelBooking?: (id: string) => void;
 }
 
 const statusStyles = {
@@ -20,7 +22,7 @@ const statusStyles = {
   cancelled: "bg-destructive/10 text-destructive",
 };
 
-const TripsPage = ({ bookings }: TripsPageProps) => {
+const TripsPage = ({ bookings, onEditBooking, onCancelBooking }: TripsPageProps) => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="mx-auto max-w-5xl px-4 pt-6">
@@ -55,6 +57,32 @@ const TripsPage = ({ bookings }: TripsPageProps) => {
                   <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold capitalize ${statusStyles[b.status]}`}>
                     {b.status}
                   </span>
+                  {b.status === "upcoming" && onEditBooking && onCancelBooking && (
+                    <div className="mt-3 flex gap-2">
+                      <button 
+                        onClick={() => {
+                          const checkIn = window.prompt("Enter new Check-In date:", b.checkIn);
+                          if (!checkIn) return;
+                          const checkOut = window.prompt("Enter new Check-Out date:", b.checkOut);
+                          if (!checkOut) return;
+                          onEditBooking(b.id, checkIn, checkOut);
+                        }}
+                        className="rounded-lg bg-secondary px-3 py-1.5 text-[10px] font-semibold text-foreground hover:bg-secondary/80"
+                      >
+                        Edit Dates
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (window.confirm("Are you sure you want to cancel this trip?")) {
+                            onCancelBooking(b.id);
+                          }
+                        }}
+                        className="rounded-lg bg-destructive/10 px-3 py-1.5 text-[10px] font-semibold text-destructive hover:bg-destructive/20"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

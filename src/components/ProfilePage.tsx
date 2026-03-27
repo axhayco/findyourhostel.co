@@ -75,6 +75,8 @@ const ProfilePage = ({ isGuest, onBack, onNavigate, onSignOut }: ProfilePageProp
       },
     });
 
+    await supabase.auth.refreshSession();
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

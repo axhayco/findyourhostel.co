@@ -40,7 +40,13 @@ const Index = () => {
     return "splash";
   });
   const [selectedHostel, setSelectedHostel] = useState<Hostel | null>(null);
-  const [hostels, setHostels] = useState<Hostel[]>(mockHostels);
+  const [hostels, setHostels] = useState<Hostel[]>(() => {
+    try {
+      const saved = localStorage.getItem("hostelmate-hostels");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return mockHostels;
+  });
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     return (sessionStorage.getItem("hostelmate-current-tab") as Tab) || "explore";
   });
@@ -59,6 +65,10 @@ const Index = () => {
       sessionStorage.setItem("hostelmate-current-page", page);
     }
   }, [page]);
+
+  useEffect(() => {
+    localStorage.setItem("hostelmate-hostels", JSON.stringify(hostels));
+  }, [hostels]);
 
   useEffect(() => {
     sessionStorage.setItem("hostelmate-current-tab", activeTab);
@@ -160,6 +170,16 @@ const Index = () => {
     setBookings((prev) => [newBooking, ...prev]);
     setPage("trips");
     setActiveTab("trips");
+  }, []);
+
+  const handleEditBooking = useCallback((id: string, checkIn: string, checkOut: string) => {
+    setBookings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, checkIn, checkOut } : b))
+    );
+  }, []);
+
+  const handleCancelBooking = useCallback((id: string) => {
+    setBookings((prev) => prev.filter((b) => b.id !== id));
   }, []);
 
   const handleTabChange = useCallback((tab: Tab) => {
@@ -288,7 +308,11 @@ const Index = () => {
     case "trips":
       return (
         <>
-          <TripsPage bookings={bookings} />
+          <TripsPage 
+            bookings={bookings} 
+            onEditBooking={handleEditBooking} 
+            onCancelBooking={handleCancelBooking} 
+          />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
         </>
       );
