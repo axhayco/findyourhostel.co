@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useHostelContext } from "@/context/HostelContext";
+import { Hostel } from "@/data/hostels";
 import { Bot, X, Send, Sparkles, Loader2, AlertTriangle, Check } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -17,7 +19,7 @@ interface ConfirmAction {
   onConfirm: () => void;
 }
 
-// ─── Local Agent Engine (no external API needed) ──────────────────────────────
+// ─── Local Agent Engine (hostel-aware) ────────────────────────────────────────
 
 const ELECTRICITY_DATA: Record<string, { balance: string; daysLeft: string }> = {
   "304": { balance: "₹145", daysLeft: "~2 days" },
@@ -69,9 +71,13 @@ let convState: ConversationState = {};
 
 function handleAgentQuery(
   input: string,
-  role: "student" | "owner"
+  role: "student" | "owner",
+  hostel: Hostel | null,
+  allHostels: Hostel[]
 ): { reply: string; needsConfirm: boolean } {
   const q = input.toLowerCase().trim();
+  const hostelName = hostel?.name || "your hostel";
+  const hasMeals = hostel?.amenities?.includes("Meals Included") ?? false;
 
   // ── Handle ongoing conversation states ──────────────────────────────────
   if (convState.awaitingRoomNumber) {
@@ -79,9 +85,9 @@ function handleAgentQuery(
     const room = q.replace(/[^0-9]/g, "");
     const data = ELECTRICITY_DATA[room];
     if (data) {
-      return { reply: `Room ${room} electricity balance: ${data.balance} remaining (${data.daysLeft} left). Remember to top up before it runs out!`, needsConfirm: false };
+      return { reply: `Room ${room} at ${hostelName} — electricity balance: ${data.balance} remaining (${data.daysLeft} left). Remember to top up before it runs out!`, needsConfirm: false };
     }
-    return { reply: `I couldn't find records for Room ${room}. Please check your room number and try again.`, needsConfirm: false };
+    return { reply: `I couldn't find records for Room ${room} at ${hostelName}. Please check your room number and try again.`, needsConfirm: false };
   }
 
   if (convState.awaitingLeaveStart) {
@@ -101,7 +107,7 @@ function handleAgentQuery(
   if (convState.awaitingLeaveReason) {
     convState.awaitingLeaveReason = false;
     const ticketId = `LV-${++leaveCounter}`;
-    const reply = `I'll submit your leave request:\n• From: ${convState.leaveStart}\n• To: ${convState.leaveEnd}\n• Reason: ${input.trim()}\n• Ticket: ${ticketId}\n\nShall I proceed?`;
+    const reply = `I'll submit your leave request from ${hostelName}:\n• From: ${convState.leaveStart}\n• To: ${convState.leaveEnd}\n• Reason: ${input.trim()}\n• Ticket: ${ticketId}\n\nShall I proceed?`;
     return { reply, needsConfirm: true };
   }
 
@@ -134,7 +140,7 @@ function handleAgentQuery(
   if (convState.awaitingMealFeedback) {
     convState.awaitingMealFeedback = false;
     const feedback = q === "skip" || q === "no" ? "" : input.trim();
-    const result = `Thanks! Your ${convState.mealType || "meal"} rating of ${convState.mealRating}/5 has been recorded.${feedback ? ` Feedback: "${feedback}"` : ""} This week's average mess rating is 3.8/5.`;
+    const result = `Thanks! Your ${convState.mealType || "meal"} rating of ${convState.mealRating}/5 at ${hostelName} has been recorded.${feedback ? ` Feedback: "${feedback}"` : ""} This week's average mess rating is 3.8/5.`;
     convState.mealType = undefined;
     convState.mealRating = undefined;
     return { reply: result, needsConfirm: false };
@@ -145,8 +151,7 @@ function handleAgentQuery(
     const isApprove = q.includes("approve") || q.includes("yes");
     const isReject = q.includes("reject") || q.includes("no") || q.includes("deny");
     if (isReject) {
-      const reply = `I'll reject the leave for ${convState.leaveTarget}. Shall I proceed?`;
-      return { reply, needsConfirm: true };
+      return { reply: `I'll reject the leave for ${convState.leaveTarget}. Shall I proceed?`, needsConfirm: true };
     }
     if (isApprove) {
       return { reply: `Done! Leave for ${convState.leaveTarget} has been approved. They'll be notified shortly.`, needsConfirm: false };
@@ -158,20 +163,23 @@ function handleAgentQuery(
   if (role === "student") {
     // Electricity balance
     if (q.includes("electric") || q.includes("balance") || q.includes("power") || q.includes("unit")) {
-      const roomMatch = q.match(/(?:room\s*)?(\d{3})/);
+      const roomMatch = q.match(/(\d{3})/);
       if (roomMatch) {
         const data = ELECTRICITY_DATA[roomMatch[1]];
         if (data) {
-          return { reply: `Room ${roomMatch[1]} electricity balance: ${data.balance} remaining (${data.daysLeft} left). Top up soon if it's running low!`, needsConfirm: false };
+          return { reply: `Room ${roomMatch[1]} at ${hostelName} — electricity balance: ${data.balance} remaining (${data.daysLeft} left). Top up soon if it's running low!`, needsConfirm: false };
         }
-        return { reply: `I couldn't find records for Room ${roomMatch[1]}. Double-check your room number.`, needsConfirm: false };
+        return { reply: `I couldn't find records for Room ${roomMatch[1]} at ${hostelName}. Double-check your room number.`, needsConfirm: false };
       }
       convState.awaitingRoomNumber = true;
-      return { reply: "Sure, I can check that. What's your room number?", needsConfirm: false };
+      return { reply: `Sure, I can check your electricity balance at ${hostelName}. What's your room number?`, needsConfirm: false };
     }
 
     // Mess menu
     if (q.includes("mess") || q.includes("menu") || q.includes("food") || q.includes("lunch") || q.includes("dinner") || q.includes("breakfast")) {
+      if (!hasMeals) {
+        return { reply: `${hostelName} doesn't include meals in the plan (current rent: ₹${hostel?.rent?.toLocaleString() || "N/A"}/mo). You may want to check nearby restaurants or tiffin services.`, needsConfirm: false };
+      }
       const isTomorrow = q.includes("tomorrow");
       const day = isTomorrow ? "tomorrow" : "today";
       const menu = MESS_MENU[day];
@@ -181,10 +189,10 @@ function handleAgentQuery(
       else if (q.includes("dinner")) mealType = "dinner";
 
       if (mealType) {
-        return { reply: `${day.charAt(0).toUpperCase() + day.slice(1)}'s ${mealType}: ${menu[mealType]}`, needsConfirm: false };
+        return { reply: `${day.charAt(0).toUpperCase() + day.slice(1)}'s ${mealType} at ${hostelName}: ${menu[mealType]}`, needsConfirm: false };
       }
       return {
-        reply: `Here's ${day}'s mess menu:\n🌅 Breakfast: ${menu.breakfast}\n🍛 Lunch: ${menu.lunch}\n🌙 Dinner: ${menu.dinner}`,
+        reply: `Here's ${day}'s mess menu at ${hostelName}:\n🌅 Breakfast: ${menu.breakfast}\n🍛 Lunch: ${menu.lunch}\n🌙 Dinner: ${menu.dinner}`,
         needsConfirm: false,
       };
     }
@@ -192,27 +200,75 @@ function handleAgentQuery(
     // Leave request
     if (q.includes("leave") || q.includes("absence") || q.includes("going home")) {
       convState.awaitingLeaveStart = true;
-      return { reply: "I can help you submit a leave request. When does your leave start?", needsConfirm: false };
+      return { reply: `I can help you submit a leave request from ${hostelName}. When does your leave start?`, needsConfirm: false };
     }
 
     // Rate meal
     if (q.includes("rate") || q.includes("rating")) {
+      if (!hasMeals) {
+        return { reply: `${hostelName} doesn't have an in-house mess. Meal ratings are only available for hostels with included meals.`, needsConfirm: false };
+      }
       let mealType = "today's meal";
       if (q.includes("breakfast")) mealType = "breakfast";
       else if (q.includes("lunch")) mealType = "lunch";
       else if (q.includes("dinner")) mealType = "dinner";
       convState.mealType = mealType;
       convState.awaitingMealRating = true;
-      return { reply: `Sure! Rate ${mealType} from 1 to 5:`, needsConfirm: false };
+      return { reply: `Sure! Rate ${mealType} at ${hostelName} from 1 to 5:`, needsConfirm: false };
+    }
+
+    // Hostel info
+    if (q.includes("amenit") || q.includes("facilit") || q.includes("what does") || q.includes("details") || q.includes("about this")) {
+      if (hostel) {
+        return {
+          reply: `${hostel.name} (${hostel.location}):\n• Rent: ₹${hostel.rent.toLocaleString()}/mo\n• Type: ${hostel.gender === "male" ? "Boys" : "Girls"}\n• Vacancies: ${hostel.vacancies}/${hostel.totalCapacity} beds\n• Rating: ${hostel.rating}/5\n• Amenities: ${hostel.amenities.join(", ")}\n• Contact: ${hostel.contactPhone}`,
+          needsConfirm: false,
+        };
+      }
+      return { reply: "Select a hostel first to see its details.", needsConfirm: false };
+    }
+
+    // Vacancy
+    if (q.includes("vacanc") || q.includes("available") || q.includes("room")) {
+      if (hostel) {
+        const status = hostel.vacancies === 0
+          ? `${hostel.name} is currently full. Join the waitlist or check other hostels nearby.`
+          : `${hostel.name} has ${hostel.vacancies} beds available out of ${hostel.totalCapacity}. Rent is ₹${hostel.rent.toLocaleString()}/mo.`;
+        return { reply: status, needsConfirm: false };
+      }
+      return { reply: "Select a hostel first to check vacancies.", needsConfirm: false };
     }
   }
 
   // ── Owner Skills ────────────────────────────────────────────────────────
   if (role === "owner") {
-    // Occupancy stats
+    // Occupancy stats — use real hostel data
     if (q.includes("occupancy") || q.includes("stats") || q.includes("vacant") || q.includes("beds") || q.includes("revenue")) {
+      const ownerHostels = allHostels.filter(h => h.ownerId);
+      const totalBeds = ownerHostels.length > 0 ? ownerHostels.reduce((s, h) => s + h.totalCapacity, 0) : 120;
+      const vacant = ownerHostels.length > 0 ? ownerHostels.reduce((s, h) => s + h.vacancies, 0) : 12;
+      const occupied = totalBeds - vacant;
+      const rate = totalBeds ? Math.round((occupied / totalBeds) * 100) : 85;
+      const avgRent = ownerHostels.length > 0
+        ? Math.round(ownerHostels.reduce((s, h) => s + h.rent, 0) / ownerHostels.length)
+        : 6000;
+      const revenue = occupied * avgRent;
+      const count = ownerHostels.length || 3;
+
+      let extras = "";
+      if (ownerHostels.length > 1) {
+        const sorted = [...ownerHostels].sort((a, b) => {
+          const rA = a.totalCapacity ? (a.totalCapacity - a.vacancies) / a.totalCapacity : 0;
+          const rB = b.totalCapacity ? (b.totalCapacity - b.vacancies) / b.totalCapacity : 0;
+          return rB - rA;
+        });
+        const topPct = Math.round(((sorted[0].totalCapacity - sorted[0].vacancies) / sorted[0].totalCapacity) * 100);
+        const lowPct = Math.round(((sorted[sorted.length - 1].totalCapacity - sorted[sorted.length - 1].vacancies) / sorted[sorted.length - 1].totalCapacity) * 100);
+        extras = `\n🏆 Highest: ${sorted[0].name} (${topPct}%)\n📉 Lowest: ${sorted[sorted.length - 1].name} (${lowPct}%)`;
+      }
+
       return {
-        reply: "Here are your current stats:\n📊 Overall occupancy: 85% across 3 properties\n🛏️ Vacant beds: 12\n💰 Monthly revenue: ~₹2,45,000\n🏆 Highest: Sunrise Boys Hostel (94%)\n📉 Lowest: Lakshmi Girls PG (72%)",
+        reply: `Here are your current stats:\n📊 Overall occupancy: ${rate}% across ${count} properties\n🛏️ Vacant beds: ${vacant}\n💰 Monthly revenue: ~₹${revenue.toLocaleString()}${extras}`,
         needsConfirm: false,
       };
     }
@@ -243,10 +299,16 @@ function handleAgentQuery(
     }
   }
 
+  // ── Confirmed actions ───────────────────────────────────────────────────
+  if (q === "confirmed, please proceed." || q === "yes" || q === "confirm" || q === "proceed") {
+    const ticketId = `LV-${leaveCounter}`;
+    return { reply: `Done! Your request has been processed successfully. Reference: ${ticketId}. You'll receive a notification shortly.`, needsConfirm: false };
+  }
+
   // ── General / fallback ──────────────────────────────────────────────────
   if (q.includes("hi") || q.includes("hello") || q.includes("hey")) {
     const skills = role === "student"
-      ? "electricity balance, mess menu, leave requests, or meal ratings"
+      ? `electricity balance${hasMeals ? ", mess menu" : ""}, leave requests, or hostel details`
       : "occupancy stats, pending leaves, or broadcasting notices";
     return { reply: `Hey there! I can help you with ${skills}. What do you need?`, needsConfirm: false };
   }
@@ -257,20 +319,24 @@ function handleAgentQuery(
 
   if (q.includes("help") || q.includes("what can you do")) {
     if (role === "student") {
-      return {
-        reply: "Here's what I can do:\n1️⃣ Check electricity balance\n2️⃣ Show mess menu (today/tomorrow)\n3️⃣ Submit a leave request\n4️⃣ Rate a meal\n\nJust ask naturally!",
-        needsConfirm: false,
-      };
+      const items = [
+        "1️⃣ Check electricity balance",
+        hasMeals ? "2️⃣ Show mess menu (today/tomorrow)" : null,
+        `${hasMeals ? "3️⃣" : "2️⃣"} Submit a leave request`,
+        `${hasMeals ? "4️⃣" : "3️⃣"} Check hostel details & vacancies`,
+        hasMeals ? "5️⃣ Rate a meal" : null,
+      ].filter(Boolean).join("\n");
+      return { reply: `Here's what I can do at ${hostelName}:\n${items}\n\nJust ask naturally!`, needsConfirm: false };
     }
     return {
-      reply: "Here's what I can do:\n1️⃣ Show occupancy stats\n2️⃣ View & act on pending leaves\n3️⃣ Broadcast notices to residents\n\nJust ask naturally!",
+      reply: "Here's what I can do:\n1️⃣ Show occupancy stats (from your hostels)\n2️⃣ View & act on pending leaves\n3️⃣ Broadcast notices to residents\n\nJust ask naturally!",
       needsConfirm: false,
     };
   }
 
   // Fallback
   const fallbackSkills = role === "student"
-    ? "electricity balance, mess menu, leave requests, or meal ratings"
+    ? `electricity balance${hasMeals ? ", mess menu" : ""}, leave requests, or hostel info`
     : "occupancy stats, pending leaves, or broadcast notices";
   return {
     reply: `I'm not sure I understood that. I can help with ${fallbackSkills}. Could you try rephrasing?`,
@@ -313,6 +379,7 @@ function ConfirmCard({ action, onConfirm, onCancel }: {
 
 export const AgentControlPlane = () => {
   const { user, role } = useAuth();
+  const { hostels: allHostels, selectedHostel } = useHostelContext();
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -334,14 +401,19 @@ export const AgentControlPlane = () => {
   // Greeting on open
   useEffect(() => {
     if (isOpen && messages.length === 0 && role) {
-      convState = {}; // Reset conversation state
-      const greeting =
-        role === "owner"
-          ? "Welcome back. Ask me about occupancy stats, pending leaves, or to broadcast a notice."
-          : "Hey! Ask me about your electricity balance, today's mess menu, or to submit a leave request.";
+      convState = {};
+      let greeting: string;
+      if (role === "owner") {
+        greeting = "Welcome back. Ask me about occupancy stats, pending leaves, or to broadcast a notice.";
+      } else if (selectedHostel) {
+        const hasMeals = selectedHostel.amenities?.includes("Meals Included");
+        greeting = `Hey! You're viewing ${selectedHostel.name} (${selectedHostel.location}). I can help with your electricity balance${hasMeals ? ", today's mess menu" : ""}, or submit a leave request.`;
+      } else {
+        greeting = "Hey! Ask me about your electricity balance, today's mess menu, or to submit a leave request.";
+      }
       setMessages([{ id: "init", role: "assistant", content: greeting }]);
     }
-  }, [isOpen, role, messages.length]);
+  }, [isOpen, role, messages.length, selectedHostel]);
 
   if (!user || !role) return null;
 
@@ -355,10 +427,9 @@ export const AgentControlPlane = () => {
     setIsLoading(true);
     setActivePendingId(null);
 
-    // Small delay to feel natural
     await new Promise((r) => setTimeout(r, 400 + Math.random() * 400));
 
-    const { reply, needsConfirm } = handleAgentQuery(text.trim(), role as "student" | "owner");
+    const { reply, needsConfirm } = handleAgentQuery(text.trim(), role as "student" | "owner", selectedHostel, allHostels);
     const assistantId = `a-${Date.now()}`;
 
     if (needsConfirm) {
@@ -373,7 +444,7 @@ export const AgentControlPlane = () => {
 
           await new Promise((r) => setTimeout(r, 500));
 
-          const { reply: finalReply } = handleAgentQuery("Confirmed, please proceed.", role as "student" | "owner");
+          const { reply: finalReply } = handleAgentQuery("Confirmed, please proceed.", role as "student" | "owner", selectedHostel, allHostels);
           setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: finalReply }]);
           setIsLoading(false);
         },
@@ -389,13 +460,20 @@ export const AgentControlPlane = () => {
 
   const handleCancel = () => {
     setActivePendingId(null);
-    convState = {}; // Reset any pending state
+    convState = {};
     setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: "Got it, cancelled. Anything else I can help with?" }]);
   };
 
   const quickActions =
     role === "student"
-      ? ["Electricity balance", "Today's mess menu", "Request leave"]
+      ? selectedHostel
+        ? [
+            "Electricity balance",
+            ...(selectedHostel.amenities?.includes("Meals Included") ? ["Today's mess menu"] : []),
+            "Request leave",
+            "Hostel details",
+          ]
+        : ["Electricity balance", "Today's mess menu", "Request leave"]
       : ["Occupancy stats", "Pending leaves", "Broadcast a notice"];
 
   return (
@@ -428,7 +506,7 @@ export const AgentControlPlane = () => {
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-green-400" />
                   </span>
-                  Always Active
+                  {selectedHostel ? selectedHostel.name : "Always Active"}
                 </p>
               </div>
             </div>
@@ -519,7 +597,9 @@ export const AgentControlPlane = () => {
                 }
               </button>
             </div>
-            <p className="mt-1.5 text-center text-[9px] text-muted-foreground">HostelMate Digital Assistant</p>
+            <p className="mt-1.5 text-center text-[9px] text-muted-foreground">
+              {selectedHostel ? `Assisting for ${selectedHostel.name}` : "HostelMate Digital Assistant"}
+            </p>
           </div>
         </div>
       )}
