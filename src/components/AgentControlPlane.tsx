@@ -208,13 +208,13 @@ function handleAgentQuery(
       if (!hasMeals) {
         return { reply: `${hostelName} doesn't have an in-house mess. Meal ratings are only available for hostels with included meals.`, needsConfirm: false };
       }
-      let mealType = "today's meal";
-      if (q.includes("breakfast")) mealType = "breakfast";
-      else if (q.includes("lunch")) mealType = "lunch";
-      else if (q.includes("dinner")) mealType = "dinner";
-      convState.mealType = mealType;
+      let mealTypeStr = "today's meal";
+      if (q.includes("breakfast")) mealTypeStr = "breakfast";
+      else if (q.includes("lunch")) mealTypeStr = "lunch";
+      else if (q.includes("dinner")) mealTypeStr = "dinner";
+      convState.mealType = mealTypeStr;
       convState.awaitingMealRating = true;
-      return { reply: `Sure! Rate ${mealType} at ${hostelName} from 1 to 5:`, needsConfirm: false };
+      return { reply: `Sure! Rate ${mealTypeStr} at ${hostelName} from 1 to 5:`, needsConfirm: false };
     }
 
     // Hostel info
@@ -245,15 +245,15 @@ function handleAgentQuery(
     // Occupancy stats — use real hostel data
     if (q.includes("occupancy") || q.includes("stats") || q.includes("vacant") || q.includes("beds") || q.includes("revenue")) {
       const ownerHostels = allHostels.filter(h => h.ownerId);
-      const totalBeds = ownerHostels.length > 0 ? ownerHostels.reduce((s, h) => s + h.totalCapacity, 0) : 120;
-      const vacant = ownerHostels.length > 0 ? ownerHostels.reduce((s, h) => s + h.vacancies, 0) : 12;
-      const occupied = totalBeds - vacant;
-      const rate = totalBeds ? Math.round((occupied / totalBeds) * 100) : 85;
-      const avgRent = ownerHostels.length > 0
+      const totalBedsNum = ownerHostels.length > 0 ? ownerHostels.reduce((s, h) => s + h.totalCapacity, 0) : 120;
+      const vacantNum = ownerHostels.length > 0 ? ownerHostels.reduce((s, h) => s + h.vacancies, 0) : 12;
+      const occupiedNum = totalBedsNum - vacantNum;
+      const rateNum = totalBedsNum ? Math.round((occupiedNum / totalBedsNum) * 100) : 85;
+      const avgRentNum = ownerHostels.length > 0
         ? Math.round(ownerHostels.reduce((s, h) => s + h.rent, 0) / ownerHostels.length)
         : 6000;
-      const revenue = occupied * avgRent;
-      const count = ownerHostels.length || 3;
+      const revenueNum = occupiedNum * avgRentNum;
+      const countNum = ownerHostels.length || 3;
 
       let extras = "";
       if (ownerHostels.length > 1) {
@@ -268,7 +268,7 @@ function handleAgentQuery(
       }
 
       return {
-        reply: `Here are your current stats:\n📊 Overall occupancy: ${rate}% across ${count} properties\n🛏️ Vacant beds: ${vacant}\n💰 Monthly revenue: ~₹${revenue.toLocaleString()}${extras}`,
+        reply: `Here are your current stats:\n📊 Overall occupancy: ${rateNum}% across ${countNum} properties\n🛏️ Vacant beds: ${vacantNum}\n💰 Monthly revenue: ~₹${revenueNum.toLocaleString()}${extras}`,
         needsConfirm: false,
       };
     }
@@ -301,16 +301,16 @@ function handleAgentQuery(
 
   // ── Confirmed actions ───────────────────────────────────────────────────
   if (q === "confirmed, please proceed." || q === "yes" || q === "confirm" || q === "proceed") {
-    const ticketId = `LV-${leaveCounter}`;
-    return { reply: `Done! Your request has been processed successfully. Reference: ${ticketId}. You'll receive a notification shortly.`, needsConfirm: false };
+    const finalTicketId = `LV-${leaveCounter}`;
+    return { reply: `Done! Your request has been processed successfully. Reference: ${finalTicketId}. You'll receive a notification shortly.`, needsConfirm: false };
   }
 
   // ── General / fallback ──────────────────────────────────────────────────
   if (q.includes("hi") || q.includes("hello") || q.includes("hey")) {
-    const skills = role === "student"
+    const skillList = role === "student"
       ? `electricity balance${hasMeals ? ", mess menu" : ""}, leave requests, or hostel details`
       : "occupancy stats, pending leaves, or broadcasting notices";
-    return { reply: `Hey there! I can help you with ${skills}. What do you need?`, needsConfirm: false };
+    return { reply: `Hey there! I can help you with ${skillList}. What do you need?`, needsConfirm: false };
   }
 
   if (q.includes("thank")) {
@@ -335,11 +335,11 @@ function handleAgentQuery(
   }
 
   // Fallback
-  const fallbackSkills = role === "student"
+  const fallbackSkillsStr = role === "student"
     ? `electricity balance${hasMeals ? ", mess menu" : ""}, leave requests, or hostel info`
     : "occupancy stats, pending leaves, or broadcast notices";
   return {
-    reply: `I'm not sure I understood that. I can help with ${fallbackSkills}. Could you try rephrasing?`,
+    reply: `I'm not sure I understood that. I can help with ${fallbackSkillsStr}. Could you try rephrasing?`,
     needsConfirm: false,
   };
 }
@@ -377,7 +377,7 @@ function ConfirmCard({ action, onConfirm, onCancel }: {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export const AgentControlPlane = () => {
+export const AgentControlPlane = ({ hasBottomNav }: { hasBottomNav?: boolean }) => {
   const { user, role } = useAuth();
   const { hostels: allHostels, selectedHostel } = useHostelContext();
   const [isOpen, setIsOpen] = useState(false);
@@ -387,6 +387,8 @@ export const AgentControlPlane = () => {
   const [activePendingId, setActivePendingId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const effectiveRole = (role || "student") as "student" | "owner";
 
   // Auto-scroll
   useEffect(() => {
@@ -400,10 +402,10 @@ export const AgentControlPlane = () => {
 
   // Greeting on open
   useEffect(() => {
-    if (isOpen && messages.length === 0 && role) {
+    if (isOpen && messages.length === 0) {
       convState = {};
       let greeting: string;
-      if (role === "owner") {
+      if (effectiveRole === "owner") {
         greeting = "Welcome back. Ask me about occupancy stats, pending leaves, or to broadcast a notice.";
       } else if (selectedHostel) {
         const hasMeals = selectedHostel.amenities?.includes("Meals Included");
@@ -413,9 +415,7 @@ export const AgentControlPlane = () => {
       }
       setMessages([{ id: "init", role: "assistant", content: greeting }]);
     }
-  }, [isOpen, role, messages.length, selectedHostel]);
-
-  if (!user || !role) return null;
+  }, [isOpen, effectiveRole, messages.length, selectedHostel]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -429,7 +429,7 @@ export const AgentControlPlane = () => {
 
     await new Promise((r) => setTimeout(r, 400 + Math.random() * 400));
 
-    const { reply, needsConfirm } = handleAgentQuery(text.trim(), role as "student" | "owner", selectedHostel, allHostels);
+    const { reply, needsConfirm } = handleAgentQuery(text.trim(), effectiveRole, selectedHostel, allHostels);
     const assistantId = `a-${Date.now()}`;
 
     if (needsConfirm) {
@@ -444,7 +444,7 @@ export const AgentControlPlane = () => {
 
           await new Promise((r) => setTimeout(r, 500));
 
-          const { reply: finalReply } = handleAgentQuery("Confirmed, please proceed.", role as "student" | "owner", selectedHostel, allHostels);
+          const { reply: finalReply } = handleAgentQuery("Confirmed, please proceed.", effectiveRole, selectedHostel, allHostels);
           setMessages((p) => [...p, { id: `a-${Date.now()}`, role: "assistant", content: finalReply }]);
           setIsLoading(false);
         },
@@ -465,7 +465,7 @@ export const AgentControlPlane = () => {
   };
 
   const quickActions =
-    role === "student"
+    effectiveRole === "student"
       ? selectedHostel
         ? [
             "Electricity balance",
@@ -481,8 +481,8 @@ export const AgentControlPlane = () => {
       {/* FAB */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 ${isOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
-          }`}
+        className={`fixed right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-300 hover:scale-105 active:scale-95 ${isOpen ? "scale-0 opacity-0 pointer-events-none" : "scale-100 opacity-100"
+          } ${hasBottomNav ? "bottom-24" : "bottom-6"}`}
         aria-label="Open HostelMate Assistant"
       >
         <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-400 animate-pulse" />
