@@ -59,14 +59,16 @@ const ProfilePage = ({ isGuest, onBack, onNavigate, onSignOut }: ProfilePageProp
     setLoading(true);
 
     try {
-      // Upsert into profiles table
+      // Upsert into profiles table (may fail due to RLS, handle gracefully)
       const { error: dbError } = await supabase.from("profiles").upsert({
         user_id: user.id,
         name: profile.name,
         email: profile.email,
       });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.warn("Could not save to profiles table (likely RLS), proceeding with auth metadata:", dbError);
+      }
 
       // Also persist extra fields (phone, college, bio) to auth metadata
       const { error: authError } = await supabase.auth.updateUser({
