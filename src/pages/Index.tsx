@@ -17,6 +17,8 @@ import MessagesPage from "@/components/MessagesPage";
 import { Hostel, mockHostels } from "@/data/hostels";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { HostelProvider } from "@/context/HostelContext";
+import { AgentControlPlane } from "@/components/AgentControlPlane";
 
 type Page =
   | "splash" | "role-select"
@@ -120,6 +122,13 @@ const Index = () => {
     })();
   }, [user]);
 
+  useEffect(() => {
+    // Clear selected hostel when navigating away from detail or chat
+    if (page !== "detail" && page !== "chat" && selectedHostel) {
+      setSelectedHostel(null);
+    }
+  }, [page, selectedHostel]);
+
   const handleSplashFinish = useCallback(() => {
     sessionStorage.setItem("hostelmate-splash-seen", "true");
     if (user && role) {
@@ -214,12 +223,21 @@ const Index = () => {
   }
 
   // ── Page switch ───────────────────────────────────────────────────────────
+  const hostelContextValue = { hostels, selectedHostel };
+
+  const wrap = (el: React.ReactNode) => (
+    <HostelProvider value={hostelContextValue}>
+      {el}
+      {page !== "splash" && <AgentControlPlane hasBottomNav={showBottomNav} />}
+    </HostelProvider>
+  );
+
   switch (page) {
     case "splash":
-      return <SplashScreen onFinish={handleSplashFinish} />;
+      return wrap(<SplashScreen onFinish={handleSplashFinish} />);
 
     case "role-select":
-      return (
+      return wrap(
         <RoleSelectPage
           onSelect={(role) =>
             setPage(role === "student" ? "login-student" : "login-owner")
@@ -228,7 +246,7 @@ const Index = () => {
       );
 
     case "login-student":
-      return (
+      return wrap(
         <LoginPage
           role="student"
           onLogin={() => handleLoginSuccess("student")}
@@ -236,7 +254,7 @@ const Index = () => {
       );
 
     case "login-owner":
-      return (
+      return wrap(
         <LoginPage
           role="owner"
           onLogin={() => handleLoginSuccess("owner")}
@@ -244,7 +262,7 @@ const Index = () => {
       );
 
     case "student":
-      return (
+      return wrap(
         <>
           <StudentPage
             hostels={hostels}
@@ -257,7 +275,7 @@ const Index = () => {
       );
 
     case "owner":
-      return (
+      return wrap(
         <OwnerPage
           hostels={hostels}
           onHostelsChange={setHostels}
@@ -267,7 +285,7 @@ const Index = () => {
       );
 
     case "detail":
-      return selectedHostel ? (
+      return wrap(selectedHostel ? (
         <HostelDetail
           hostel={selectedHostel}
           onBack={() => setPage("student")}
@@ -285,20 +303,20 @@ const Index = () => {
           <StudentPage hostels={hostels} onSelectHostel={handleSelectHostel} favorites={favorites} onToggleFavorite={toggleFavorite} />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
         </>
-      );
+      ));
 
     case "chat":
-      return selectedHostel ? (
+      return wrap(selectedHostel ? (
         <CommunityChat hostel={selectedHostel} onBack={() => setPage("detail")} />
       ) : (
         <>
           <StudentPage hostels={hostels} onSelectHostel={handleSelectHostel} favorites={favorites} onToggleFavorite={toggleFavorite} />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
         </>
-      );
+      ));
 
     case "wishlists":
-      return (
+      return wrap(
         <>
           <WishlistsPage favorites={favorites} hostels={hostels} onSelectHostel={handleSelectHostel} onToggleFavorite={toggleFavorite} />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
@@ -306,7 +324,7 @@ const Index = () => {
       );
 
     case "trips":
-      return (
+      return wrap(
         <>
           <TripsPage 
             bookings={bookings} 
@@ -318,7 +336,7 @@ const Index = () => {
       );
 
     case "messages":
-      return (
+      return wrap(
         <>
           <MessagesPage
             hostels={hostels}
@@ -330,7 +348,7 @@ const Index = () => {
       );
 
     case "profile":
-      return (
+      return wrap(
         <>
           <ProfilePage
             isGuest={!user}
@@ -343,7 +361,7 @@ const Index = () => {
       );
 
     case "help":
-      return (
+      return wrap(
         <>
           <HelpPage onBack={() => { setPage("student"); setActiveTab("explore"); }} />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
@@ -351,7 +369,7 @@ const Index = () => {
       );
 
     case "contact":
-      return (
+      return wrap(
         <>
           <ContactPage onBack={() => { setPage("student"); setActiveTab("explore"); }} />
           <BottomNav active={activeTab} onTabChange={handleTabChange} />
@@ -359,7 +377,7 @@ const Index = () => {
       );
 
     default:
-      return <SplashScreen onFinish={handleSplashFinish} />;
+      return wrap(<SplashScreen onFinish={handleSplashFinish} />);
   }
 };
 
