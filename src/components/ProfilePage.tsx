@@ -52,33 +52,44 @@ const ProfilePage = ({ isGuest, onBack, onNavigate, onSignOut }: ProfilePageProp
     };
 
     loadProfile();
-  }, [user]);
+  }, [user?.id]);
 
   const handleSave = async () => {
     if (!user) return;
+    setLoading(true);
 
-    // Upsert into profiles table
-    await supabase.from("profiles").upsert({
-      user_id: user.id,
-      name: profile.name,
-      email: profile.email,
-    });
+    try {
+      // Upsert into profiles table
+      const { error: dbError } = await supabase.from("profiles").upsert({
+        user_id: user.id,
+        name: profile.name,
+        email: profile.email,
+      });
 
-    // Also persist extra fields (phone, college, bio) to auth metadata
-    await supabase.auth.updateUser({
-      data: {
-        full_name: profile.name,
-        name:      profile.name,
-        phone:     profile.phone,
-        college:   profile.college,
-        bio:       profile.bio,
-      },
-    });
+      if (dbError) throw dbError;
 
-    await supabase.auth.refreshSession();
+      // Also persist extra fields (phone, college, bio) to auth metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          full_name: profile.name,
+          name:      profile.name,
+          phone:     profile.phone,
+          college:   profile.college,
+          bio:       profile.bio,
+        },
+      });
 
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+      if (authError) throw authError;
+
+      await supabase.auth.refreshSession();
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err: any) {
+      alert(err.message || "Failed to save profile details");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputClass =
